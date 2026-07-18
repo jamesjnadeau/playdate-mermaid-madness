@@ -12,11 +12,11 @@ class("Enemy").extends(Ship)
 function Enemy:init(x, y, heading)
 	Enemy.super.init(self, x, y, heading)
 	self.radius = Config.ENEMY_RADIUS
-	self.length = 16
+	self.length = Config.ENEMY_LENGTH
 	self.color = gfx.kColorBlack
 	self.health = 1
 
-	local L, B = 16, 8
+	local L, B = Config.ENEMY_LENGTH, Config.ENEMY_BEAM
 	self.hull = { L, 0,  -L * 0.7, B,  -L, B * 0.55,  -L, -B * 0.55,  -L * 0.7, -B }
 end
 

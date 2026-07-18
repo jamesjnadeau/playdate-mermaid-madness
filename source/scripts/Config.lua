@@ -37,10 +37,10 @@ Config.EXPLOSION = {
 Config.SHIP_MAX_SPEED = 130     -- pixels / second
 Config.SHIP_ACCEL     = 90      -- pixels / second, added per second while held
 Config.SHIP_TURN_SCALE = 0.55   -- crank-degrees -> heading-degrees multiplier
-Config.SHIP_RADIUS    = 12      -- collision radius
+Config.SHIP_COLLIDE_RADIUS    = 12      -- collision radius
 Config.SHIP_MAX_HEALTH = 5
-Config.SHIP_LENGTH    = 12      -- half-length of hull when drawn, default 22
-Config.SHIP_BEAM      = 3       -- half-width of hull when drawn
+Config.SHIP_LENGTH    = 15      -- half-length of hull when drawn, default 22
+Config.SHIP_BEAM      = 4       -- half-width of hull when drawn
 
 -- Enemies -------------------------------------------------------------------
 Config.ENEMY_SPEED      = 78    -- pixels / second (slower than you at full sail)
@@ -48,8 +48,8 @@ Config.ENEMY_RADIUS     = 11
 Config.ENEMY_TURN_RATE  = 130   -- degrees / second they can rotate toward you
 Config.ENEMY_SPAWN_DIST = 260   -- how far off-screen they appear, from ship
 Config.ENEMY_DAMAGE     = 1
-Config.ENEMY_LENGTH    = 12      -- half-length of hull when drawn, default 22
-Config.ENEMY_BEAM      = 3       -- half-width of hull when drawn
+Config.ENEMY_LENGTH    = 20      -- half-length of hull when drawn, default 22
+Config.ENEMY_BEAM      = 8       -- half-width of hull when drawn
 
 -- Difficulty ramp: spawn interval shrinks from START to FLOOR over RAMP seconds
 Config.SPAWN_INTERVAL_START = 2.6
@@ -67,6 +67,8 @@ Config.CANNON_RADIUS    = 2
 Config.TARGET_RANGE     = 200   -- max auto-target acquisition distance, default: 320
 Config.AIM_LINE_LENGTH  = 18    -- length (px) of the converging aim-indicator lines
 Config.AIM_LINE_WIDTH   = 2     -- stroke thickness (px) of the aim-indicator lines
+Config.NO_TARGET_MARK_SIZE   = 16 -- pixel height of the "?" shown when charging with nothing in range
+Config.NO_TARGET_MARK_OFFSET = 30 -- distance (px) from the ship's center to that mark
 
 -- Levels ----------------------------------------------------------------
 -- Level N clears once the player has defeated N * LEVEL_ENEMY_STEP enemies

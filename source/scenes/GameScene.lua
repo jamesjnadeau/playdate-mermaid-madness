@@ -243,8 +243,14 @@ function GameScene:tickGame()
 		self.ship:changeSpeed(self.speedInput)
 	end
 	if self.chargingSide then
-		self.charge = math.min(1, self.charge + Config.CHARGE_RATE * dt)
 		self.target = self:pickTarget(self.chargingSide)
+		if self.target then
+			self.charge = math.min(1, self.charge + Config.CHARGE_RATE * dt)
+		else
+			-- Nothing in range on this side: charge can't steady an aim that
+			-- has nothing to lock onto.
+			self.charge = 0
+		end
 	end
 
 	self.ship:update()
@@ -261,7 +267,7 @@ function GameScene:tickGame()
 	for i = #self.enemies, 1, -1 do
 		local e = self.enemies[i]
 		e:update(ship.x, ship.y)
-		if Utils.dist(e.x, e.y, ship.x, ship.y) < (Config.SHIP_RADIUS + e.radius) then
+		if Utils.dist(e.x, e.y, ship.x, ship.y) < (Config.SHIP_COLLIDE_RADIUS + e.radius) then
 			self:addExplosion(e)
 			table.remove(self.enemies, i)
 			self:enemyDefeated()
@@ -366,7 +372,11 @@ function GameScene:drawWater(camX, camY)
 end
 
 function GameScene:drawTargetingLine(camX, camY)
-	if not (self.chargingSide and self.target) then return end
+	if not self.chargingSide then return end
+	if not self.target then
+		self:drawNoTargetMark(camX, camY, self.chargingSide)
+		return
+	end
 	local sx = self.ship.x - camX
 	local sy = self.ship.y - camY
 	local tx = self.target.x - camX
@@ -379,6 +389,35 @@ function GameScene:drawTargetingLine(camX, camY)
 	gfx.drawCircleAtPoint(tx, ty, self.target.radius + 2)
 
 	self:drawAimLines(sx, sy, tx, ty)
+end
+
+-- Lazily-built image for the "nothing in range" indicator; text images are
+-- cheap to cache since the string never changes.
+local noTargetMarkImage = nil
+local function getNoTargetMarkImage()
+	if not noTargetMarkImage then
+		noTargetMarkImage = gfx.imageWithText("?", 40, 40)
+	end
+	return noTargetMarkImage
+end
+
+-- Shown on whichever side the player is charging when no enemy is in range
+-- on that side, at Config.NO_TARGET_MARK_OFFSET from the ship and scaled to
+-- Config.NO_TARGET_MARK_SIZE.
+function GameScene:drawNoTargetMark(camX, camY, side)
+	local ship = self.ship
+	local perp = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
+	local hx, hy = Utils.heading(perp)
+	local wx = ship.x + hx * Config.NO_TARGET_MARK_OFFSET
+	local wy = ship.y + hy * Config.NO_TARGET_MARK_OFFSET
+	local sx = wx - camX
+	local sy = wy - camY
+
+	local img = getNoTargetMarkImage()
+	local iw, ih = img:getSize()
+	local scale = Config.NO_TARGET_MARK_SIZE / ih
+	gfx.setImageDrawMode(gfx.kDrawModeCopy)
+	img:drawScaled(sx - (iw * scale) / 2, sy - (ih * scale) / 2, scale)
 end
 
 -- Two short lines near the ship show live aim spread: wide apart while
@@ -436,8 +475,8 @@ function GameScene:drawHUD()
 	end
 
 	-- Score (top-right)
-	gfx.drawText("* " .. self.score, Config.SCREEN_W - 60, 6)
-	gfx.drawText("LV " .. self.level .. "  " .. self.levelKills .. "/" .. self.levelTarget, Config.SCREEN_W - 90, 20)
+	-- gfx.drawText("* " .. self.score, Config.SCREEN_W - 60, 6)
+	gfx.drawText("LV " .. self.level .. "  " .. self.levelKills .. "/" .. self.levelTarget, Config.SCREEN_W - 90, 6) -- 20
 
 	-- Speed gauge (bottom-left)
 	local gw, gh = 90, 8
