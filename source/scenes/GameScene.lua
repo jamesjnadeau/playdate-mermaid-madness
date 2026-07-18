@@ -4,7 +4,7 @@
 
 import "scripts/Config"
 import "scripts/Utils"
-import "scripts/Ship"
+import "scripts/Player"
 import "scripts/Enemy"
 import "scripts/Cannonball"
 
@@ -39,11 +39,11 @@ end
 -- Build all game state in init() (runs before the scene's first update()).
 -- Noble may call update() during the tail of a scene transition, before
 -- start() fires, so nothing here may be left until start().
-function GameScene:init(...)
-	GameScene.super.init(self, ...)
+function GameScene:init(sceneProperties)
+	GameScene.super.init(self, sceneProperties)
 	self.backgroundColor = gfx.kColorWhite
 	scene = self
-	self:resetGame()
+	self:resetGame(sceneProperties)
 end
 
 function GameScene:start()
@@ -58,16 +58,22 @@ function GameScene:finish()
 	if scene == self then scene = nil end
 end
 
-function GameScene:resetGame()
+function GameScene:resetGame(sceneProperties)
+	sceneProperties = sceneProperties or {}
 	clearAllParticles()
-	self.ship = Ship(Config.WORLD_W / 2, Config.WORLD_H / 2)
+	self.ship = Player(Config.WORLD_W / 2, Config.WORLD_H / 2)
 	self.enemies = {}
 	self.cannonballs = {}
 	self.explosions = {}
 	self.elapsed = 0
 	self.spawnTimer = Config.SPAWN_INTERVAL_START
-	self.score = 0
+	self.level = sceneProperties.level or 1
+	self.score = sceneProperties.totalDefeated or 0 -- cumulative across all levels this run
+	self.levelKills = 0                             -- kills toward clearing the current level
+	self.levelSpawned = 0                           -- enemies spawned so far this level
+	self.levelTarget = self.level * Config.LEVEL_ENEMY_STEP
 	self.gameOver = false
+	self.levelComplete = false
 
 	-- Input state
 	self.speedInput = 0        -- -1 / 0 / +1 throttle from Up/Down
@@ -158,7 +164,10 @@ function GameScene:releaseCharge(side)
 			-- Nothing to lock onto: fire a broadside straight out that side.
 			dir = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
 		end
-		local speed = lerp(Config.CANNON_MIN_SPEED, Config.CANNON_MAX_SPEED, self.charge)
+		-- Charging steadies the aim: accuracy ramps up to 99% at full charge,
+		-- so an undercharged shot can still stray wide of the target.
+		dir = Utils.wrapDeg(dir + (math.random() * 2 - 1) * self:currentAimSpread())
+		local speed = Config.CANNON_SPEED
 		local hx, hy = Utils.heading(dir)
 		local bx = ship.x + hx * (Config.SHIP_LENGTH + 4)
 		local by = ship.y + hy * (Config.SHIP_LENGTH + 4)
@@ -168,6 +177,13 @@ function GameScene:releaseCharge(side)
 	self.chargingSide = nil
 	self.charge = 0
 	self.target = nil
+end
+
+-- Degrees of random aim error at the current charge: full spread at 0 charge,
+-- narrowing to (1 - CANNON_MAX_ACCURACY) worth of spread once fully charged.
+function GameScene:currentAimSpread()
+	local accuracy = Config.CANNON_MAX_ACCURACY * self.charge
+	return Config.CANNON_MAX_SPREAD * (1 - accuracy)
 end
 
 -- ---------------------------------------------------------------------------
@@ -181,6 +197,7 @@ end
 
 function GameScene:spawnEnemy()
 	if #self.enemies >= Config.MAX_ENEMIES then return end
+	if self.levelSpawned >= self.levelTarget then return end
 	local ship = self.ship
 	local ang = math.random() * 360
 	local ax, ay = Utils.heading(ang)
@@ -189,18 +206,18 @@ function GameScene:spawnEnemy()
 	local ey = Utils.clamp(ship.y + ay * dist, 0, Config.WORLD_H)
 	local facing = Utils.angleTo(ex, ey, ship.x, ship.y)
 	self.enemies[#self.enemies + 1] = Enemy(ex, ey, facing)
+	self.levelSpawned = self.levelSpawned + 1
 end
 
-function GameScene:addExplosion(x, y)
-	local e = ParticleCircle(x, y)
-	e:setMode(Particles.modes.DISAPPEAR)
-	e:setSize(2, 5)
-	e:setSpeed(2, 9)            -- pdParticles speed is per-frame
-	e:setSpread(0, 359)
-	e:setLifespan(4, 9)
-	e:setColor(gfx.kColorBlack)
-	e:add(22)
-	self.explosions[#self.explosions + 1] = { sys = e, age = 0 }
+function GameScene:addExplosion(ship)
+	self.explosions[#self.explosions + 1] = ship:explode()
+end
+
+-- Call whenever an enemy is destroyed, however it died (rammed or cannoned),
+-- so both the running total and the current level's progress stay in sync.
+function GameScene:enemyDefeated()
+	self.score = self.score + 1
+	self.levelKills = self.levelKills + 1
 end
 
 -- ---------------------------------------------------------------------------
@@ -210,7 +227,7 @@ end
 function GameScene:update()
 	GameScene.super.update(self)
 
-	if not self.gameOver then
+	if not self.gameOver and not self.levelComplete then
 		self:tickGame()
 	end
 
@@ -245,8 +262,9 @@ function GameScene:tickGame()
 		local e = self.enemies[i]
 		e:update(ship.x, ship.y)
 		if Utils.dist(e.x, e.y, ship.x, ship.y) < (Config.SHIP_RADIUS + e.radius) then
-			self:addExplosion(e.x, e.y)
+			self:addExplosion(e)
 			table.remove(self.enemies, i)
+			self:enemyDefeated()
 			if ship:hit(Config.ENEMY_DAMAGE) and ship.health <= 0 then
 				self.gameOver = true
 			end
@@ -261,9 +279,9 @@ function GameScene:tickGame()
 		for j = #self.enemies, 1, -1 do
 			local e = self.enemies[j]
 			if Utils.dist(b.x, b.y, e.x, e.y) < (b.radius + e.radius) then
-				self:addExplosion(e.x, e.y)
+				self:addExplosion(e)
 				table.remove(self.enemies, j)
-				self.score = self.score + 1
+				self:enemyDefeated()
 				hit = true
 				break
 			end
@@ -271,6 +289,17 @@ function GameScene:tickGame()
 		if hit or b.dead then
 			table.remove(self.cannonballs, i)
 		end
+	end
+
+	-- Level clears once enough enemies have been defeated; hand off to the
+	-- interstitial scene, which restarts GameScene at the next level with
+	-- health reset (Player:init always sets full health).
+	if self.levelKills >= self.levelTarget then
+		self.levelComplete = true
+		Noble.transition(LevelCompleteScene, nil, nil, nil, {
+			completedLevel = self.level,
+			totalDefeated = self.score,
+		})
 	end
 end
 
@@ -304,7 +333,7 @@ function GameScene:render()
 		local ex = self.explosions[i]
 		ex.sys:update()
 		ex.age = ex.age + 1
-		if #ex.sys:getParticles() == 0 or ex.age > 120 then
+		if #ex.sys:getParticles() == 0 or ex.age > ex.maxAge then
 			ex.sys:remove()
 			table.remove(self.explosions, i)
 		end
@@ -348,6 +377,22 @@ function GameScene:drawTargetingLine(camX, camY)
 	-- Reticle around the locked target.
 	gfx.drawCircleAtPoint(tx, ty, self.target.radius + 6)
 	gfx.drawCircleAtPoint(tx, ty, self.target.radius + 2)
+
+	self:drawAimLines(sx, sy, tx, ty)
+end
+
+-- Two short lines near the ship show live aim spread: wide apart while
+-- undercharged, converging onto the dotted target line as charge (and thus
+-- accuracy) builds toward CANNON_MAX_ACCURACY.
+function GameScene:drawAimLines(sx, sy, tx, ty)
+	local dir = Utils.angleTo(sx, sy, tx, ty)
+	local spread = self:currentAimSpread()
+	gfx.setLineWidth(Config.AIM_LINE_WIDTH)
+	for _, sign in ipairs({ -1, 1 }) do
+		local hx, hy = Utils.heading(dir + sign * spread)
+		gfx.drawLine(sx, sy, sx + hx * Config.AIM_LINE_LENGTH, sy + hy * Config.AIM_LINE_LENGTH)
+	end
+	gfx.setLineWidth(1)
 end
 
 function GameScene:drawOffscreenArrows(camX, camY)
@@ -392,6 +437,7 @@ function GameScene:drawHUD()
 
 	-- Score (top-right)
 	gfx.drawText("* " .. self.score, Config.SCREEN_W - 60, 6)
+	gfx.drawText("LV " .. self.level .. "  " .. self.levelKills .. "/" .. self.levelTarget, Config.SCREEN_W - 90, 20)
 
 	-- Speed gauge (bottom-left)
 	local gw, gh = 90, 8
@@ -400,16 +446,6 @@ function GameScene:drawHUD()
 	gfx.drawRect(gx, gy, gw, gh)
 	local fill = (self.ship.speed / Config.SHIP_MAX_SPEED) * (gw - 2)
 	gfx.fillRect(gx + 1, gy + 1, fill, gh - 2)
-
-	-- Charge meter (bottom-center) while charging
-	if self.chargingSide then
-		local cw = 120
-		local cx = (Config.SCREEN_W - cw) / 2
-		local cy = Config.SCREEN_H - 16
-		gfx.drawText(self.chargingSide == "port" and "PORT" or "STARBOARD", cx, cy - 16)
-		gfx.drawRect(cx, cy, cw, 8)
-		gfx.fillRect(cx + 1, cy + 1, (cw - 2) * self.charge, 6)
-	end
 end
 
 function GameScene:drawGameOver()

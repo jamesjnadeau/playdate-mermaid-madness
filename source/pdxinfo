@@ -1,6 +1,6 @@
-name=Cannonade
+name=Mermaid Madness
 author=Your Name
 description=A top-down pirate sailing game. Crank to steer, dpad to sail and fire broadsides.
-bundleID=com.example.cannonade
-version=1.0
+bundleID=com.jaemsjnadeau.mermaidmadness
+version=0.1
 buildNumber=1

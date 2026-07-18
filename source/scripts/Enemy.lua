@@ -3,48 +3,25 @@
 
 import "scripts/Config"
 import "scripts/Utils"
+import "scripts/Ship"
 
 local gfx <const> = playdate.graphics
 
-class("Enemy").extends()
-
-local function rotatePts(pts, deg, ox, oy)
-	local r = deg * math.pi / 180
-	local c, s = math.cos(r), math.sin(r)
-	local out = {}
-	for i = 1, #pts, 2 do
-		local lx, ly = pts[i], pts[i + 1]
-		out[#out + 1] = ox + (lx * c - ly * s)
-		out[#out + 1] = oy + (lx * s + ly * c)
-	end
-	return out
-end
-
-local function fillFan(p)
-	local n = #p // 2
-	for i = 2, n - 1 do
-		gfx.fillTriangle(p[1], p[2], p[i * 2 - 1], p[i * 2], p[i * 2 + 1], p[i * 2 + 2])
-	end
-end
+class("Enemy").extends(Ship)
 
 function Enemy:init(x, y, heading)
-	Enemy.super.init(self)
-	self.x = x
-	self.y = y
-	self.heading = heading or 0
+	Enemy.super.init(self, x, y, heading)
 	self.radius = Config.ENEMY_RADIUS
-	self.alive = true
+	self.length = 16
+	self.color = gfx.kColorBlack
+	self.health = 1
 
-	-- local L, B = 16, 8
-	-- self.hull = { L, 0,  -L * 0.7, B,  -L, B * 0.55,  -L, -B * 0.55,  -L * 0.7, -B }
-
-	local L, B = Config.ENEMY_LENGTH, Config.ENEMY_BEAM
+	local L, B = 16, 8
 	self.hull = { L, 0,  -L * 0.7, B,  -L, B * 0.55,  -L, -B * 0.55,  -L * 0.7, -B }
 end
 
 function Enemy:update(targetX, targetY)
 	local dt = Config.DT
-	-- Turn toward the player at a limited rate, then advance.
 	local want = Utils.angleTo(self.x, self.y, targetX, targetY)
 	local diff = Utils.angleDiff(self.heading, want)
 	local maxTurn = Config.ENEMY_TURN_RATE * dt
@@ -57,11 +34,8 @@ function Enemy:update(targetX, targetY)
 end
 
 function Enemy:draw()
-	local p = rotatePts(self.hull, self.heading, self.x, self.y)
-	-- Solid black hull: reads clearly as "enemy" vs the white player ship.
-	gfx.setColor(gfx.kColorBlack)
-	fillFan(p)
-	-- White bow marker so their heading is legible.
+	Enemy.super.draw(self)
+	
 	local hx, hy = Utils.heading(self.heading)
 	gfx.setColor(gfx.kColorWhite)
 	gfx.fillCircleAtPoint(self.x + hx * 6, self.y + hy * 6, 2)

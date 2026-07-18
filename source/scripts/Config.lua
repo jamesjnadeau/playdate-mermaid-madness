@@ -1,6 +1,7 @@
 -- Config.lua
 -- Central place for all tuning values so the game is easy to tweak.
 -- Everything lives in a global table so any file can read it after import.
+local gfx <const> = playdate.graphics
 
 Config = {}
 
@@ -15,6 +16,22 @@ Config.DT         = 1 / 30
 Config.WORLD_W    = 6000
 Config.WORLD_H    = 6000
 Config.WATER_GRID = 32          -- spacing of the drawn water speckle grid
+
+
+-- Explosions ------------------------------------------------------------------
+-- Each field maps to one pdParticles ParticleCircle setter (see Ship:explode).
+-- Ship.explosionConfig is the default every ship inherits; a subclass can
+-- overwrite the whole table or just a field to get its own look.
+Config.EXPLOSION = {
+	mode     = Particles.modes.DISAPPEAR,
+	size     = { 2, 5 },
+	speed    = { 2, 9 },      -- pdParticles speed is per-frame
+	spread   = { 0, 359 },
+	lifespan = { 4, 9 },
+	color    = gfx.kColorBlack,
+	count    = 22,
+	maxAge   = 120,           -- frames; safety net if particles never fully decay
+}
 
 -- Ship ----------------------------------------------------------------------
 Config.SHIP_MAX_SPEED = 130     -- pixels / second
@@ -41,11 +58,19 @@ Config.SPAWN_RAMP_SECONDS   = 90
 Config.MAX_ENEMIES          = 40
 
 -- Cannon --------------------------------------------------------------------
-Config.CHARGE_RATE     = 1.4    -- charge units / second (held), clamps at 1.0
-Config.CANNON_MIN_SPEED = 240   -- projectile speed at 0 charge
-Config.CANNON_MAX_SPEED = 520   -- projectile speed at full charge
+Config.CHARGE_RATE      = 1.4   -- charge units / second (held), clamps at 1.0
+Config.CANNON_SPEED     = 420   -- projectile speed, fixed regardless of charge
+Config.CANNON_MAX_SPREAD = 40   -- degrees of random aim error at 0 charge
+Config.CANNON_MAX_ACCURACY = 0.99 -- accuracy (0-1) reached once fully charged
 Config.CANNON_LIFETIME  = 1.6   -- seconds before a ball falls in the sea
 Config.CANNON_RADIUS    = 2
 Config.TARGET_RANGE     = 200   -- max auto-target acquisition distance, default: 320
+Config.AIM_LINE_LENGTH  = 18    -- length (px) of the converging aim-indicator lines
+Config.AIM_LINE_WIDTH   = 2     -- stroke thickness (px) of the aim-indicator lines
+
+-- Levels ----------------------------------------------------------------
+-- Level N clears once the player has defeated N * LEVEL_ENEMY_STEP enemies
+-- since that level began (level 1 -> 5, level 2 -> 10, ...).
+Config.LEVEL_ENEMY_STEP = 5
 
 return Config

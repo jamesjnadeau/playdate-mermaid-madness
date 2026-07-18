@@ -1,0 +1,1 @@
+$PLAYDATE_SDK_PATH/bin/pdc source MermaindMadness.pdx

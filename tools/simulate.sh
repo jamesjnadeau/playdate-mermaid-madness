@@ -1,0 +1,1 @@
+$PLAYDATE_SDK_PATH/bin/PlaydateSimulator MermaindMadness.pdx
