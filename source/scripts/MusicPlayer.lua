@@ -73,8 +73,13 @@ function MusicPlayer.load(songName)
 	if songName then
 		local dir = MusicPlayer.SONGS_DIR .. "/" .. songName
 		for _, name in ipairs(playdate.file.listFiles(dir) or {}) do
-			if name:match("%.wav$") then
-				MusicPlayer.pieces[#MusicPlayer.pieces + 1] = dir .. "/" .. name
+			-- pdc compiles each piece's .wav into a .pda (see
+			-- render-song.sh); playdate.file.listFiles reflects the
+			-- compiled name, and player:load() wants the path with no
+			-- extension at all (same convention as gfx.image.new).
+			local base = name:match("^(.*)%.pda$")
+			if base then
+				MusicPlayer.pieces[#MusicPlayer.pieces + 1] = dir .. "/" .. base
 			end
 		end
 		table.sort(MusicPlayer.pieces)
