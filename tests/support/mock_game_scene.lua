@@ -1,20 +1,26 @@
 -- mock_game_scene.lua
 -- A lightweight test double for source/scenes/GameScene.lua, the base class
--- GameSceneMain and GameSceneTraining extend.
+-- GameSceneMain, GameSceneTraining, and InstructionsScene all extend.
 --
 -- The real GameScene builds a Player/Ship, sprites, particles, wind physics,
 -- and drawing for every frame -- fine for the Simulator, but way past what a
 -- "does pressing this button transition to the right scene" test needs, and
 -- per CLAUDE.md's tests/ note, gameplay built on Noble Engine's class system
 -- still needs the real Simulator to verify. This stand-in keeps just the
--- surface GameSceneMain.lua/GameSceneTraining.lua/EnemySelectScene.lua actually
--- call: lifecycle (init/start/finish), GameScene.current(), the shared D-pad
--- input handler (copied verbatim from the real class -- it only touches
+-- surface GameSceneMain.lua/GameSceneTraining.lua/EnemySelectScene.lua/
+-- InstructionsScene.lua actually call: lifecycle (init/start/finish),
+-- GameScene.current(), the shared D-pad input handler (copied verbatim from
+-- the real class -- it only touches
 -- self.ship/self.trimInput/self:beginCharge/self:releaseCharge, all stubbed
--- below), enemyTypes, spawnEnemy's cap/forced-type logic, and the
--- tickGame/enemyDefeated hooks GameSceneMain layers level-clear logic onto.
--- Rendering (:render/:drawHUD/:drawModeStatus/:drawGameOver) is a no-op --
--- this suite checks scene transitions and state, not pixels.
+-- below), enemyTypes, spawnEnemy's cap/forced-type logic, and the tickGame
+-- hook GameSceneMain/InstructionsScene layer their own level-clear/step-spawn
+-- logic onto. Rendering
+-- (:render/:drawHUD/:drawModeStatus/:drawGameOver) is a no-op -- this suite
+-- checks scene transitions and state, not pixels. Note self.ship here is just
+-- `{ steer = function() end }`, with no x/y/heading -- fine as long as no
+-- test calls :update() (which nothing currently does), since that's the only
+-- path that reaches InstructionsScene:spawnDummyTarget, the one place that'd
+-- need real ship coordinates.
 
 GameScene = {}
 class("GameScene").extends(NobleScene)

@@ -118,13 +118,31 @@ one.
 
 ## InstructionsScene
 
-Step-by-step how-to-play walkthrough: one prompt at a time (steer, trim
-sails, charge a broadside), each clearing only once the player actually
-performs that input, then advancing to the next.
+Extends `GameScene` (like `GameSceneMain`/`GameSceneTraining`) instead of
+`NobleScene` directly, so the player's own ship is really sailing on real
+water while they work through a step-by-step walkthrough, drawn above the
+ship (which, like every `GameScene`, sits camera-locked at screen center) so
+the water, wake, and practice target stay visible underneath. Every control
+has two directions, and each direction gets its own step (crank one way, then
+the other; Up, then Down; Left broadside, then Right), so the player actually
+exercises both instead of just whichever's more convenient. Each step only
+clears once the player actually performs *that* direction enough — see
+`Config.INSTRUCTIONS_*`:
+- Crank steps: `INSTRUCTIONS_CRANK_SECONDS` of cumulative time spent actively
+  cranking that sign of delta (no discrete "press" to count, see
+  `InstructionsScene:onCranked`).
+- Up/Down steps: `INSTRUCTIONS_TRIM_PRESSES` presses of that specific button.
+- Left/Right steps: `INSTRUCTIONS_BROADSIDE_PRESSES` presses of that specific
+  button. A stationary, harmless `EnemyDummy` (can't move, ram damage is 0)
+  spawns on the side the current step is teaching, at
+  `INSTRUCTIONS_DUMMY_DISTANCE`; if destroyed, a fresh one immediately takes
+  its place (see `InstructionsScene:tickGame`/`spawnDummyTarget`) so there's
+  always something to aim the button being taught at.
 
 - **Reached from:** `TitleScene` ("Instructions").
-- **Controls:** Crank/Up/Down/Left/Right advance the current step once
-  performed (crank requires a cumulative turn, see `CRANK_STEP_DEGREES`); B
+- **Controls:** real `GameScene` ship controls throughout (crank steers,
+  Up/Down trims, Left/Right charges/fires a broadside) via
+  `GameScene.buildSharedInputHandler`, wrapped to also track step progress; B
   returns to `TitleScene` at any point, regardless of step.
 - **sceneProperties read:** none.
 

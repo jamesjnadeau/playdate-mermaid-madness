@@ -7,13 +7,14 @@
 -- and asserts each screen lands on the scene the flow diagram in
 -- source/scenes/Scenes.md says it should.
 --
--- GameSceneMain/GameSceneTraining extend a lightweight test double
--- (tests/support/mock_game_scene.lua) instead of the real
+-- GameSceneMain/GameSceneTraining/InstructionsScene extend a lightweight test
+-- double (tests/support/mock_game_scene.lua) instead of the real
 -- source/scenes/GameScene.lua: the real class builds a Player/Ship, sprites,
 -- and particle systems, which is real-Simulator territory per CLAUDE.md, not
 -- "does this button transition to the right scene." The double keeps
--- GameSceneMain/GameSceneTraining's *own* code (level-clear detection, spawn
--- caps, the enemy-select handoff) real and under test.
+-- GameSceneMain/GameSceneTraining/InstructionsScene's *own* code (level-clear
+-- detection, spawn caps, the enemy-select handoff, tutorial step progress)
+-- real and under test.
 
 dofile("tests/support/load_scenes.lua")
 
@@ -82,6 +83,70 @@ function TestSceneFlow:testTitleInstructionsAndBack()
 	lu.assertEquals(currentClassName(), "InstructionsScene")
 
 	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "TitleScene")
+end
+
+-- Every control gets one step per direction, and each only clears once the
+-- player actually performs *that* direction enough (see InstructionsScene.lua):
+-- the crank steps by cumulative time spent cranking that sign, the trim/
+-- broadside steps by a press count of that specific button. A same-step
+-- wrong-direction press is asserted not to count, to lock in the "both
+-- directions required" behavior this test exists to cover.
+function TestSceneFlow:testInstructionsStepsRequireBothDirectionsThenBackAtAnyPoint()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("AButtonDown")
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.step, InstructionsScene.STEP_CRANK_FORWARD)
+
+	Noble.Input.fire("cranked", -5) -- wrong direction: doesn't count
+	lu.assertEquals(scene.step, InstructionsScene.STEP_CRANK_FORWARD)
+
+	-- A couple of extra ticks past the exact threshold as a margin against
+	-- float accumulation error in the repeated Config.DT additions.
+	local crankTicks = math.ceil(Config.INSTRUCTIONS_CRANK_SECONDS / Config.DT) + 2
+	for _ = 1, crankTicks do
+		Noble.Input.fire("cranked", 5)
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_CRANK_BACKWARD)
+
+	for _ = 1, crankTicks do
+		Noble.Input.fire("cranked", -5)
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_TRIM_UP)
+
+	Noble.Input.fire("downButtonDown") -- wrong direction: doesn't count
+	Noble.Input.fire("downButtonUp")
+	lu.assertEquals(scene.step, InstructionsScene.STEP_TRIM_UP)
+
+	for _ = 1, Config.INSTRUCTIONS_TRIM_PRESSES do
+		Noble.Input.fire("upButtonDown")
+		Noble.Input.fire("upButtonUp")
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_TRIM_DOWN)
+
+	for _ = 1, Config.INSTRUCTIONS_TRIM_PRESSES do
+		Noble.Input.fire("downButtonDown")
+		Noble.Input.fire("downButtonUp")
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_BROADSIDE_LEFT)
+
+	Noble.Input.fire("rightButtonDown") -- wrong direction: doesn't count
+	Noble.Input.fire("rightButtonUp")
+	lu.assertEquals(scene.step, InstructionsScene.STEP_BROADSIDE_LEFT)
+
+	for _ = 1, Config.INSTRUCTIONS_BROADSIDE_PRESSES do
+		Noble.Input.fire("leftButtonDown")
+		Noble.Input.fire("leftButtonUp")
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_BROADSIDE_RIGHT)
+
+	for _ = 1, Config.INSTRUCTIONS_BROADSIDE_PRESSES do
+		Noble.Input.fire("rightButtonDown")
+		Noble.Input.fire("rightButtonUp")
+	end
+	lu.assertEquals(scene.step, InstructionsScene.STEP_DONE)
+
+	Noble.Input.fire("BButtonDown") -- B still exits once every step is done
 	lu.assertEquals(currentClassName(), "TitleScene")
 end
 

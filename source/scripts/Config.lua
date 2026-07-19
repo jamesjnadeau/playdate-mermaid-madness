@@ -202,6 +202,30 @@ Config.WIND_CHANGE_INTERVAL_FLOOR        = 4   -- seconds; LEVEL_WIND_CHANGE_INT
 Config.TITLE_MENU_DELAY = 3          -- seconds before the menu starts rising in
 Config.TITLE_MENU_RISE_DURATION = 1.5  -- seconds for the rise-in animation
 
+------------------------
+-- Instructions screen --
+------------------------
+-- Every direction of every control gets its own step (crank one way, then
+-- the other; Up, then Down; Left broadside, then Right), so the player
+-- actually exercises both instead of just whichever's more convenient. Each
+-- step's prompt clears once the player has performed it enough -- a
+-- held/analog input for long enough (crank) or a discrete action repeated
+-- enough times (button presses) -- see InstructionsScene.
+Config.INSTRUCTIONS_CRANK_SECONDS = 2       -- seconds spent actively cranking one direction to clear that crank step
+Config.INSTRUCTIONS_TRIM_PRESSES = 3        -- presses of Up (or Down) to clear that trim step
+Config.INSTRUCTIONS_BROADSIDE_PRESSES = 3   -- presses of Left (or Right) to clear that broadside step
+Config.INSTRUCTIONS_DUMMY_DISTANCE = 120    -- px from the ship the practice dummy spawns at during the broadside steps
+
+-- White rounded-rect card the current step's prompt/progress text is drawn
+-- on, so it stays readable over the water/ship instead of floating bare --
+-- see InstructionsScene:drawInstructionText.
+Config.INSTRUCTIONS_TEXT_BOX_TOP          = 8  -- px from the top of the screen to the box
+Config.INSTRUCTIONS_TEXT_BOX_MARGIN_RIGHT = 8  -- px from the right of the screen to the box
+Config.INSTRUCTIONS_TEXT_BOX_PADDING_X  = 10  -- px horizontal padding inside the box
+Config.INSTRUCTIONS_TEXT_BOX_PADDING_Y  = 6   -- px vertical padding inside the box
+Config.INSTRUCTIONS_TEXT_BOX_RADIUS     = 8   -- corner radius (px)
+Config.INSTRUCTIONS_TEXT_LINE_GAP       = 2   -- px gap between the prompt and progress lines
+
 ----------
 -- Boot --
 ----------
