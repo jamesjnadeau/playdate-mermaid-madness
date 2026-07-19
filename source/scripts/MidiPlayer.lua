@@ -140,3 +140,75 @@ function MidiPlayer.applyVolume()
 		t.inst:setVolume(Config.MUSIC_VOLUME * t.relVolume)
 	end
 end
+
+-- Background-music selection, keyed off Config.MUSIC_ENABLED/MUSIC_SONG so
+-- every caller (main.lua's boot logic and system-menu "Music" checkmark,
+-- SettingsScene's Song row) shares one source of truth instead of each
+-- reimplementing "how to start/stop a song".
+
+-- Where bundled .mid files live -- compiled into the .pdx from
+-- source/assets/songs.
+MidiPlayer.SONGS_DIR = "assets/songs"
+
+-- Bundled resources are read-only and can't change mid-session, so this
+-- scans MidiPlayer.SONGS_DIR once and caches the result.
+local songFiles = nil
+
+-- Sorted list of .mid filenames under MidiPlayer.SONGS_DIR (bare filenames,
+-- suitable for Config.MUSIC_SONG / selectSong below).
+---@return string[]
+function MidiPlayer.listSongs()
+	if songFiles then return songFiles end
+	songFiles = {}
+	local files = playdate.file.listFiles(MidiPlayer.SONGS_DIR) or {}
+	for _, name in ipairs(files) do
+		if name:match("%.mid$") then
+			songFiles[#songFiles + 1] = name
+		end
+	end
+	table.sort(songFiles)
+	return songFiles
+end
+
+-- Selects `name` (a filename from listSongs(), or nil for "no song") as
+-- Config.MUSIC_SONG. If music is enabled (Config.MUSIC_ENABLED), also loads
+-- and plays it immediately (or just stops, for nil) so picking a song
+-- previews it; if disabled, only records the choice -- setEnabled(true)
+-- picks it up later.
+---@param name string|nil
+function MidiPlayer.selectSong(name)
+	Config.MUSIC_SONG = name
+	if not Config.MUSIC_ENABLED then return end
+	if name then
+		MidiPlayer.load({ path = MidiPlayer.SONGS_DIR .. "/" .. name })
+		MidiPlayer.play()
+	else
+		MidiPlayer.stop()
+	end
+end
+
+-- Turns background music on/off, syncing Config.MUSIC_ENABLED -- shared by
+-- the system-menu "Music" checkmark (main.lua) and anything else that wants
+-- to mute/unmute. Off stops playback without forgetting Config.MUSIC_SONG;
+-- on (re)loads and plays it, if one is selected.
+---@param enabled boolean
+function MidiPlayer.setEnabled(enabled)
+	Config.MUSIC_ENABLED = enabled
+	if enabled then
+		MidiPlayer.selectSong(Config.MUSIC_SONG)
+	else
+		MidiPlayer.stop()
+	end
+end
+
+-- Called once at boot (main.lua): picks the first bundled song
+-- (alphabetically) as the default if none is already selected, then plays
+-- it if Config.MUSIC_ENABLED. A no-op if no songs are bundled.
+function MidiPlayer.playDefault()
+	if not Config.MUSIC_SONG then
+		Config.MUSIC_SONG = MidiPlayer.listSongs()[1]
+	end
+	if Config.MUSIC_ENABLED then
+		MidiPlayer.selectSong(Config.MUSIC_SONG)
+	end
+end

@@ -18,6 +18,12 @@ GameSceneTraining = class("GameSceneTraining").extends(GameScene) or GameSceneTr
 -- survives the scene being torn down and recreated on transition.
 GameSceneTraining.selectedEnemyType = nil
 
+-- The "Select Enemy" item this scene itself owns, so :finish() can remove
+-- just that one instead of every system-menu item -- main.lua's "Music"
+-- checkmark is also live at the same time and must survive leaving this
+-- scene (see the 3-item cap note in CLAUDE.md).
+local selectEnemyMenuItem = nil
+
 GameSceneTraining.inputHandler = GameScene.buildSharedInputHandler(GameScene.current)
 GameSceneTraining.inputHandler.AButtonDown = function()
 	local s = GameScene.current()
@@ -29,14 +35,17 @@ end
 
 function GameSceneTraining:start()
 	GameSceneTraining.super.start(self)
-	playdate.getSystemMenu():addMenuItem("Select Enemy", function()
+	selectEnemyMenuItem = playdate.getSystemMenu():addMenuItem("Select Enemy", function()
 		Noble.transition(EnemySelectScene)
 	end)
 end
 
 function GameSceneTraining:finish()
 	GameSceneTraining.super.finish(self)
-	playdate.getSystemMenu():removeAllMenuItems()
+	if selectEnemyMenuItem then
+		playdate.getSystemMenu():removeMenuItem(selectEnemyMenuItem)
+		selectEnemyMenuItem = nil
+	end
 end
 
 function GameSceneTraining:drawModeStatus()

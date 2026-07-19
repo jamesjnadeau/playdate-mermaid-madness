@@ -121,13 +121,25 @@ kTextAlignment = { left = 0, center = 1, right = 2 }
 local systemMenuItems = {}
 local systemMenu = {}
 function systemMenu:addMenuItem(name, callback)
-	systemMenuItems[#systemMenuItems + 1] = { name = name, callback = callback }
+	local item = { name = name, callback = callback }
+	systemMenuItems[#systemMenuItems + 1] = item
+	return item
 end
 function systemMenu:addCheckmarkMenuItem(name, checked, callback)
-	systemMenuItems[#systemMenuItems + 1] = { name = name, callback = callback }
+	local item = { name = name, checked = checked, callback = callback }
+	systemMenuItems[#systemMenuItems + 1] = item
+	return item
 end
 function systemMenu:removeAllMenuItems()
 	systemMenuItems = {}
+end
+function systemMenu:removeMenuItem(item)
+	for i, existing in ipairs(systemMenuItems) do
+		if existing == item then
+			table.remove(systemMenuItems, i)
+			return
+		end
+	end
 end
 -- Test helper, not part of the real playdate API: inspect what scenes have
 -- added, e.g. to invoke GameSceneTraining's "Select Enemy" callback directly.

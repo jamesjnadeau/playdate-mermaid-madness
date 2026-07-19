@@ -4,7 +4,9 @@
 -- window): HUD toggles (Config.HUD_SHOW_*, moved here from the system menu
 -- so it stays free for scene-specific items -- see EnemySelectScene/
 -- GameSceneTraining's "Select Enemy"), Sound (pick a background song out of
--- source/assets/songs and set Config.MUSIC_VOLUME), and Tuning (a single
+-- source/assets/songs and set Config.MUSIC_VOLUME, via MidiPlayer.selectSong
+-- -- the same function main.lua's boot default and the system menu's
+-- "Music" checkmark use, so all three stay in sync), and Tuning (a single
 -- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
 -- longer reachable directly from the title screen, only through here).
 -- Built with the playout UI library, see libraries/playout.lua. Up/Down
@@ -36,50 +38,28 @@ SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 
 local scene = nil
 
--- Songs are bundled read-only assets (compiled into the .pdx from
--- source/assets/songs) -- they can't change mid-session, so this scans once
--- at load time rather than every time the scene is entered.
-local SONGS_DIR = "assets/songs"
-local SONG_FILES = {}
-do
-	local files = playdate.file.listFiles(SONGS_DIR) or {}
-	for _, name in ipairs(files) do
-		if name:match("%.mid$") then
-			SONG_FILES[#SONG_FILES + 1] = name
-		end
-	end
-	table.sort(SONG_FILES)
-end
-
 -- The song row cycles a virtual list: index 1 is always "no song", indices
--- 2.. map to SONG_FILES[index - 1]. Config.MUSIC_SONG (nil or a filename)
--- is the source of truth so the choice reads back correctly if this scene
--- is re-entered.
+-- 2.. map to MidiPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
+-- filename) is the source of truth so the choice reads back correctly if
+-- this scene is re-entered -- MidiPlayer.selectSong keeps it and actual
+-- playback in sync (also used by main.lua's boot default and the
+-- system-menu "Music" checkmark, so all three stay consistent).
 ---@return integer
 local function currentSongIndex()
 	if not Config.MUSIC_SONG then return 1 end
-	for i, name in ipairs(SONG_FILES) do
+	for i, name in ipairs(MidiPlayer.listSongs()) do
 		if name == Config.MUSIC_SONG then return i + 1 end
 	end
 	return 1
 end
 
--- Applies the song at virtual index `index`: stops playback for "no song",
--- otherwise loads and immediately plays the pick (so choosing a song in
--- this menu also previews it) and records it in Config.MUSIC_SONG.
--- Playback isn't tied to this scene -- it keeps looping as background music
--- after you leave Settings, same as any other MidiPlayer.play() call.
+-- Applies the song at virtual index `index` via MidiPlayer.selectSong (nil
+-- for "no song", index 1). Playback isn't tied to this scene -- it keeps
+-- looping as background music after you leave Settings.
 ---@param index integer
 local function selectSong(index)
-	if index <= 1 or #SONG_FILES == 0 then
-		Config.MUSIC_SONG = nil
-		MidiPlayer.stop()
-		return
-	end
-	local name = SONG_FILES[index - 1]
-	Config.MUSIC_SONG = name
-	MidiPlayer.load({ path = SONGS_DIR .. "/" .. name })
-	MidiPlayer.play()
+	local songs = MidiPlayer.listSongs()
+	MidiPlayer.selectSong(index > 1 and songs[index - 1] or nil)
 end
 
 ---@param v number
@@ -131,10 +111,11 @@ local function formatValue(item)
 		end
 		return tostring(Config[item.key])
 	elseif item.type == "song" then
-		if #SONG_FILES == 0 then return "(no songs found)" end
+		local songs = MidiPlayer.listSongs()
+		if #songs == 0 then return "(no songs found)" end
 		local idx = currentSongIndex()
 		if idx == 1 then return "(none)" end
-		return (SONG_FILES[idx - 1]:gsub("%.mid$", ""))
+		return (songs[idx - 1]:gsub("%.mid$", ""))
 	end
 	return ""
 end
@@ -233,9 +214,9 @@ local function adjustValue(delta)
 		if item.key == "MUSIC_VOLUME" then MidiPlayer.applyVolume() end
 		scene:rebuild()
 	elseif item.type == "song" then
-		if #SONG_FILES == 0 then return end
-		local count = #SONG_FILES + 1
-		selectSong(((currentSongIndex() - 1 + delta) % count) + 1)
+		local songCount = #MidiPlayer.listSongs()
+		if songCount == 0 then return end
+		selectSong(((currentSongIndex() - 1 + delta) % (songCount + 1)) + 1)
 		scene:rebuild()
 	end
 end

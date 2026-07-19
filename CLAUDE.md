@@ -87,9 +87,14 @@ item to `GameSceneTraining.lua` alongside 3 always-on HUD-toggle checkmark items
 from `main.lua` — the 4th item never appeared. It was fixed by moving the HUD
 toggles (Wind Speed/Direction/Player Speed) out of the system menu entirely
 into `SettingsScene.lua` (reached from `TitleScene`'s "Settings" item). As of
-now `GameSceneTraining`'s "Select Enemy" is the only system-menu item in the
-game, so there's no live conflict — but the cap still applies if a future
-scene wants its own system-menu item alongside it.
+now two items are live: `main.lua`'s "Music" checkmark (always on, added once
+at boot, synced with `Config.MUSIC_ENABLED` via `MidiPlayer.setEnabled` —
+see `SettingsScene.lua`'s Sound section for the player-facing equivalent) and
+`GameSceneTraining`'s scene-scoped "Select Enemy" (added in `:start()`,
+removed via `removeMenuItem` — not `removeAllMenuItems`, which would also
+wipe out "Music" — in `:finish()`). That's 2 of the 3-item cap; there's
+headroom for exactly one more, but check both of these are still accounted
+for before adding it.
 
 ## `tests/`
 
