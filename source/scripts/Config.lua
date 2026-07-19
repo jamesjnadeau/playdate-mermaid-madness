@@ -164,6 +164,21 @@ Config.AUTOFIRE_CANNON_RANGE    = Config.TARGET_RANGE / 3 -- max auto-target acq
 -- upgrade (only offered once AUTOFIRE_CANNON_UNLOCKED -- see ConfigUpgrades.lua).
 Config.AUTOFIRE_CANNON_DELAY_STEP = 0.2
 
+-----------------
+-- Storm Cloud --
+-----------------
+-- Summoned by the "Storm Cloud" upgrade (see ConfigUpgrades.lua): a slow
+-- hazard that drifts toward whichever enemy is nearest and damages every
+-- enemy within STORM_CLOUD_RADIUS on a fixed interval. Stacks -- each pick
+-- of the upgrade adds one more independent cloud (see
+-- GameScene:updateStormClouds and source/scripts/StormCloud.lua).
+Config.STORM_CLOUD_COUNT    = 0    -- number of clouds currently owned; set by the upgrade
+Config.STORM_CLOUD_SPEED    = 20   -- px/s drift speed toward the nearest enemy
+Config.STORM_CLOUD_DAMAGE   = 1    -- health removed from every enemy in range, per damage tick
+Config.STORM_CLOUD_DAMAGE_INTERVAL = 1 -- seconds between damage ticks
+Config.STORM_CLOUD_RADIUS   = 40   -- px; both the drawn size and the damage-application radius
+Config.STORM_CLOUD_LINE_WIDTH = 2  -- stroke thickness (px) of the cloud glyph
+
 -----------
 -- Sound --
 -----------

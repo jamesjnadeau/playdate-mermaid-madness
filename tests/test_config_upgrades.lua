@@ -15,12 +15,14 @@ function TestConfigUpgrades:setUp()
 	self.savedShipAccel = Config.SHIP_ACCEL
 	self.savedTridentDamage = Config.TRIDENT_DAMAGE
 	self.savedAutofireCannonUnlocked = Config.AUTOFIRE_CANNON_UNLOCKED
+	self.savedStormCloudCount = Config.STORM_CLOUD_COUNT
 end
 
 function TestConfigUpgrades:tearDown()
 	Config.SHIP_ACCEL = self.savedShipAccel
 	Config.TRIDENT_DAMAGE = self.savedTridentDamage
 	Config.AUTOFIRE_CANNON_UNLOCKED = self.savedAutofireCannonUnlocked
+	Config.STORM_CLOUD_COUNT = self.savedStormCloudCount
 	Config.TEST_STAT = nil
 end
 
@@ -52,18 +54,29 @@ function TestConfigUpgrades:testMaxValueClamp()
 	lu.assertEquals(new, 20)
 end
 
-function TestConfigUpgrades:testAutofireCannonDelayUpgradeRequiresCannonInstalled()
-	local upgrade = nil
-	for _, u in ipairs(Config.UPGRADES) do
-		if u.id == "autofire_cannon_delay" then upgrade = u end
-	end
-	lu.assertNotNil(upgrade)
-	lu.assertNotNil(upgrade.available)
+-- Every gated upgrade (an `available` predicate keyed off some other
+-- upgrade's install-count field) should flip false -> true as soon as its
+-- prerequisite's count goes above 0, and back with it.
+local GATED_UPGRADES = {
+	{ id = "autofire_cannon_delay", prereqKey = "AUTOFIRE_CANNON_UNLOCKED" },
+	{ id = "storm_cloud_damage", prereqKey = "STORM_CLOUD_COUNT" },
+	{ id = "storm_cloud_speed", prereqKey = "STORM_CLOUD_COUNT" },
+}
 
-	Config.AUTOFIRE_CANNON_UNLOCKED = 0
-	lu.assertFalse(upgrade.available())
-	Config.AUTOFIRE_CANNON_UNLOCKED = 1
-	lu.assertTrue(upgrade.available())
+function TestConfigUpgrades:testGatedUpgradesRequirePrerequisiteInstalled()
+	for _, gated in ipairs(GATED_UPGRADES) do
+		local upgrade = nil
+		for _, u in ipairs(Config.UPGRADES) do
+			if u.id == gated.id then upgrade = u end
+		end
+		lu.assertNotNil(upgrade, "missing upgrade " .. gated.id)
+		lu.assertNotNil(upgrade.available, "upgrade " .. gated.id .. " should have an `available` gate")
+
+		Config[gated.prereqKey] = 0
+		lu.assertFalse(upgrade.available(), gated.id .. " should be unavailable when " .. gated.prereqKey .. " is 0")
+		Config[gated.prereqKey] = 1
+		lu.assertTrue(upgrade.available(), gated.id .. " should be available once " .. gated.prereqKey .. " is > 0")
+	end
 end
 
 function TestConfigUpgrades:testUpgradePoolEntriesAreWellFormed()

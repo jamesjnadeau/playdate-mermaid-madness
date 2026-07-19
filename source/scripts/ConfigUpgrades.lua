@@ -87,6 +87,32 @@ Config.UPGRADES = {
 		available = function() return Config.AUTOFIRE_CANNON_UNLOCKED > 0 end,
 		format = function(v) return string.format("%.2f", v) .. " s" end,
 	},
+	{
+		id = "storm_cloud",
+		title = "Storm Cloud",
+		description = "Summons a storm cloud that drifts toward enemies, damaging any it passes over. Stacks -- each pick adds another cloud.",
+		configKey = "STORM_CLOUD_COUNT",
+		delta = 1,
+		format = function(v) return math.floor(v) .. (math.floor(v) == 1 and " cloud" or " clouds") end,
+	},
+	{
+		id = "storm_cloud_damage",
+		title = "Charged Storm",
+		description = "Storm clouds deal more damage per tick. Requires a Storm Cloud.",
+		configKey = "STORM_CLOUD_DAMAGE",
+		delta = 1,
+		available = function() return Config.STORM_CLOUD_COUNT > 0 end,
+		format = function(v) return math.floor(v) .. " dmg" end,
+	},
+	{
+		id = "storm_cloud_speed",
+		title = "Squalling Winds",
+		description = "Storm clouds drift faster toward enemies. Requires a Storm Cloud.",
+		configKey = "STORM_CLOUD_SPEED",
+		multiplier = 1.25,
+		available = function() return Config.STORM_CLOUD_COUNT > 0 end,
+		format = function(v) return math.floor(v) .. " px/s" end,
+	},
 }
 
 -- Applies `upgrade` to the live Config table and returns the before/after

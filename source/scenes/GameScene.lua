@@ -13,6 +13,7 @@ import "scripts/Enemy"
 import "scripts/EnemySwordfish"
 import "scripts/EnemyKraken"
 import "scripts/Tridentball"
+import "scripts/StormCloud"
 import "scripts/Sound"
 
 local gfx <const> = playdate.graphics
@@ -23,6 +24,7 @@ local gfx <const> = playdate.graphics
 ---@field ship Player
 ---@field enemies Enemy[]
 ---@field tridentballs Tridentball[]
+---@field stormClouds StormCloud[]
 ---@field explosions table[] each { sys: table, age: number, maxAge: number }, see Ship:explode
 ---@field elapsed number
 ---@field score number
@@ -111,6 +113,7 @@ function GameScene:resetGame(sceneProperties)
 	self.ship = Player(0, 0)
 	self.enemies = {}
 	self.tridentballs = {}
+	self.stormClouds = {} -- lazily backfilled up to Config.STORM_CLOUD_COUNT, see updateStormClouds
 	self.explosions = {}
 	self.elapsed = 0
 	self.score = 0
@@ -346,6 +349,44 @@ function GameScene:fireCannon(target)
 end
 
 -- ---------------------------------------------------------------------------
+-- Storm clouds (see Config.STORM_CLOUD_* and the "Storm Cloud" upgrade in
+-- ConfigUpgrades.lua)
+-- ---------------------------------------------------------------------------
+
+-- Called once per tick from tickGame, after enemies have moved and the
+-- tridentball collision pass has run. Lazily backfills self.stormClouds up
+-- to Config.STORM_CLOUD_COUNT (which only ever grows, via the upgrade, and
+-- only between levels) so a fresh level starts with every previously-picked
+-- cloud already summoned. Each cloud drifts on its own (StormCloud:update);
+-- damage application stays here, the same split as the tridentball collision
+-- loop above, since only GameScene can defeat an enemy (addExplosion/
+-- enemyDefeated/table.remove).
+---@param dt number
+function GameScene:updateStormClouds(dt)
+	while #self.stormClouds < Config.STORM_CLOUD_COUNT do
+		self.stormClouds[#self.stormClouds + 1] = StormCloud(self.ship.x, self.ship.y)
+	end
+
+	for _, cloud in ipairs(self.stormClouds) do
+		cloud:update(self.enemies, dt)
+		if cloud.damageTimer <= 0 then
+			cloud.damageTimer = Config.STORM_CLOUD_DAMAGE_INTERVAL
+			for i = #self.enemies, 1, -1 do
+				local e = self.enemies[i]
+				if Utils.dist(cloud.x, cloud.y, e.x, e.y) < (Config.STORM_CLOUD_RADIUS + e.radius) then
+					e:hit(Config.STORM_CLOUD_DAMAGE)
+					if not e.alive then
+						self:addExplosion(e)
+						table.remove(self.enemies, i)
+						self:enemyDefeated()
+					end
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Enemies
 -- ---------------------------------------------------------------------------
 
@@ -543,6 +584,8 @@ function GameScene:tickGame()
 			table.remove(self.tridentballs, i)
 		end
 	end
+
+	self:updateStormClouds(dt)
 end
 
 -- ---------------------------------------------------------------------------
@@ -572,6 +615,7 @@ function GameScene:render()
 
 	for _, e in ipairs(self.enemies) do e:draw() end
 	for _, b in ipairs(self.tridentballs) do b:draw() end
+	for _, cloud in ipairs(self.stormClouds) do cloud:draw() end
 	self.ship:draw()
 
 	-- Explosions on top, then prune spent systems (age cap as a safety net).
