@@ -14,6 +14,14 @@ import "scripts/ConfigUpgrades"
 
 local gfx <const> = playdate.graphics
 
+-- Text styling for this scene's menu -- change this to switch fonts (size
+-- and style come bundled together, since a font file is both). Any of
+-- Noble.Text.FONT_SYSTEM/FONT_SMALL/FONT_MEDIUM/FONT_LARGE work, or load a
+-- custom one via gfx.font.new(path). nil falls back to whatever font is
+-- currently set globally (the Playdate system font, unless another scene
+-- changed it).
+local MENU_FONT = nil
+
 ---@class UpgradeSelectScene : NobleScene
 ---@field level integer
 ---@field completedLevel integer
@@ -82,8 +90,7 @@ local function buildSelectTree(selectedIndex, upgrades)
 		hAlign = playout.kAlignCenter,
 		maxWidth = 340,
 		backgroundColor = gfx.kColorWhite,
-		border = 2,
-		borderRadius = 6,
+		font = MENU_FONT,
 	}, children)
 
 	return playout.tree.new(root)
@@ -110,8 +117,7 @@ local function buildResultTree(upgrade, oldValue, newValue)
 		hAlign = playout.kAlignCenter,
 		maxWidth = 340,
 		backgroundColor = gfx.kColorWhite,
-		border = 2,
-		borderRadius = 6,
+		font = MENU_FONT,
 	}, children)
 
 	return playout.tree.new(root)
