@@ -10,6 +10,7 @@ lu = dofile("tests/vendor/luaunit.lua")
 local testFiles = {
 	"tests/test_utils.lua",
 	"tests/test_config_upgrades.lua",
+	"tests/test_scene_flow.lua",
 }
 for _, path in ipairs(testFiles) do
 	dofile(path)
