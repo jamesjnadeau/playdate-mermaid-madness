@@ -251,19 +251,54 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 	lu.assertEquals(Config.MUSIC_VOLUME, 0)
 end
 
+-- SETTING_ROWS[6] is Volume Min, [7] is Volume Max -- follows directly from
+-- the [4]/[5] comment above. Exercises the min<=max cross-clamp in
+-- SettingsScene.lua's adjustValue: pushing min above the current max drags
+-- max along with it, and vice versa.
+function TestSceneFlow:testTitleSettingsSoundSectionVolumeMinMaxCrossClamp()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
+	Noble.Input.fire("AButtonDown")
+
+	for _ = 1, 5 do
+		Noble.Input.fire("downButtonDown") -- HUD(3) + Song + Volume -> Volume Min
+	end
+	lu.assertEquals(Noble.currentScene().selected, 6)
+
+	lu.assertEquals(Config.MUSIC_VOLUME_MIN, 0)
+	lu.assertEquals(Config.MUSIC_VOLUME_MAX, 1)
+
+	-- Drive Volume Min past Volume Max: Max should follow it up.
+	for _ = 1, 25 do
+		Noble.Input.fire("rightButtonDown")
+	end
+	lu.assertEquals(Config.MUSIC_VOLUME_MIN, 1)
+	lu.assertEquals(Config.MUSIC_VOLUME_MAX, 1)
+
+	Noble.Input.fire("downButtonDown") -- Volume Min -> Volume Max
+	lu.assertEquals(Noble.currentScene().selected, 7)
+
+	-- Drive Volume Max back below Volume Min: Min should follow it down.
+	for _ = 1, 25 do
+		Noble.Input.fire("leftButtonDown")
+	end
+	lu.assertEquals(Config.MUSIC_VOLUME_MAX, 0)
+	lu.assertEquals(Config.MUSIC_VOLUME_MIN, 0)
+end
+
 -- Tuning is no longer reachable directly from the title screen -- it's the
 -- last row of SettingsScene's "Tuning" section (see SettingsScene.lua's
--- CATEGORIES: 3 HUD rows + Song + Volume precede "Open Tuning Menu" in
--- SETTING_ROWS, so 5 downButtonDowns from Settings' default selection=1
--- lands on it). TuningScene.selected then starts on ROWS/SETTING_ROWS[1],
--- which is always Config.WATER_GRID (CATEGORIES[1] = "Water", its first
--- item) -- see TuningScene.lua.
+-- CATEGORIES: 3 HUD rows + Song + Volume + Volume Min + Volume Max precede
+-- "Open Tuning Menu" in SETTING_ROWS, so 7 downButtonDowns from Settings'
+-- default selection=1 lands on it). TuningScene.selected then starts on
+-- ROWS/SETTING_ROWS[1], which is always Config.WATER_GRID (CATEGORIES[1] =
+-- "Water", its first item) -- see TuningScene.lua.
 local function enterTuningFromTitle()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
-	for _ = 1, 5 do
-		Noble.Input.fire("downButtonDown") -- HUD(3) + Song + Volume -> "Open Tuning Menu"
+	for _ = 1, 7 do
+		Noble.Input.fire("downButtonDown") -- HUD(3) + Song + Volume + Volume Min + Volume Max -> "Open Tuning Menu"
 	end
 	Noble.Input.fire("AButtonDown")
 end

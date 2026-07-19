@@ -4,9 +4,10 @@
 -- window): HUD toggles (Config.HUD_SHOW_*, moved here from the system menu
 -- so it stays free for scene-specific items -- see EnemySelectScene/
 -- GameSceneTraining's "Select Enemy"), Sound (pick a background song out of
--- source/assets/songs and set Config.MUSIC_VOLUME, via MidiPlayer.selectSong
--- -- the same function main.lua's boot default and the system menu's
--- "Music" checkmark use, so all three stay in sync), and Tuning (a single
+-- source/assets/songs and set Config.MUSIC_VOLUME/MUSIC_VOLUME_MIN/
+-- MUSIC_VOLUME_MAX, via MidiPlayer.selectSong -- the same function main.lua's
+-- boot default and the system menu's "Music" checkmark use, so all three
+-- stay in sync), and Tuning (a single
 -- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
 -- longer reachable directly from the title screen, only through here).
 -- Built with the playout UI library, see libraries/playout.lua. Up/Down
@@ -81,6 +82,8 @@ local CATEGORIES = {
 	{ name = "Sound", items = {
 		{ type = "song", label = "Song" },
 		{ type = "number", key = "MUSIC_VOLUME", label = "Volume", step = 0.05, min = 0, max = 1, percent = true },
+		{ type = "number", key = "MUSIC_VOLUME_MIN", label = "Volume Min", step = 0.05, min = 0, max = 1, percent = true },
+		{ type = "number", key = "MUSIC_VOLUME_MAX", label = "Volume Max", step = 0.05, min = 0, max = 1, percent = true },
 	} },
 	{ name = "Tuning", items = {
 		{ type = "action", label = "Open Tuning Menu", action = function() Noble.transition(TuningScene) end },
@@ -211,7 +214,17 @@ local function adjustValue(delta)
 	local item = SETTING_ROWS[scene.selected]
 	if item.type == "number" then
 		Config[item.key] = Utils.clamp(roundTo(Config[item.key] + delta * item.step, 2), item.min, item.max)
-		if item.key == "MUSIC_VOLUME" then MidiPlayer.applyVolume() end
+		if item.key == "MUSIC_VOLUME" then
+			MidiPlayer.applyVolume()
+		elseif item.key == "MUSIC_VOLUME_MIN" then
+			-- keep min <= max: raising min past max drags max along with it
+			Config.MUSIC_VOLUME_MAX = math.max(Config.MUSIC_VOLUME_MAX, Config.MUSIC_VOLUME_MIN)
+			MidiPlayer.applyDynamics()
+		elseif item.key == "MUSIC_VOLUME_MAX" then
+			-- keep min <= max: lowering max past min drags min along with it
+			Config.MUSIC_VOLUME_MIN = math.min(Config.MUSIC_VOLUME_MIN, Config.MUSIC_VOLUME_MAX)
+			MidiPlayer.applyDynamics()
+		end
 		scene:rebuild()
 	elseif item.type == "song" then
 		local songCount = #MidiPlayer.listSongs()

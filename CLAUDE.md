@@ -96,6 +96,24 @@ wipe out "Music" — in `:finish()`). That's 2 of the 3-item cap; there's
 headroom for exactly one more, but check both of these are still accounted
 for before adding it.
 
+## `playdate.sound.track:setNotes()` adds, it doesn't replace
+
+`track:setNotes(list)` looks like a setter but isn't one — it's Lua-side
+sugar over the same `addNoteEvent` the C API exposes (`pd_api_sound.h`'s
+`SequenceTrack` struct has `addNoteEvent`/`removeNoteEvent`/`clearNotes`, no
+bulk-replace call), so calling it on a track that already has notes appends
+a second copy of every note instead of replacing them. To actually rewrite a
+track's notes, call `track:clearNotes()` first.
+
+History: hit 2026-07-19 building `MidiPlayer.applyDynamics()` (clamps note
+velocity into `Config.MUSIC_VOLUME_MIN`/`MAX` to tame a source MIDI file's
+loud/quiet swings) — confirmed by checking `$PLAYDATE_SDK_PATH/C_API/pd_api/
+pd_api_sound.h` after the Lua docs (`Inside Playdate.html`) left it
+ambiguous. See `source/scripts/MidiPlayer.lua`'s `applyDynamics` for the
+pattern: cache the track's original `getNotes()` result once (so repeated
+re-clamping with different bounds doesn't compound), then on each call build
+a fresh clamped list and `clearNotes()` + `setNotes()` it.
+
 ## `tests/`
 
 Plain-`lua5.4` unit tests — no Playdate SDK or Simulator involved. Two tiers:

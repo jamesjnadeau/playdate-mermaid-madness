@@ -17,14 +17,17 @@
 
 import "scripts/Config"
 import "scripts/Patches"
+import "scripts/Utils"
 
 local snd <const> = playdate.sound
 
 ---@class MidiPlayer.Track
 ---@field index integer sequence track index (1-based; low indices are often a tempo/meta track with no notes and are skipped)
+---@field track _Track sequence track object, kept so applyDynamics can re-clamp and rewrite its notes without re-fetching from the sequence
 ---@field patch string Patches name assigned to this track
 ---@field inst _Instrument
 ---@field relVolume number this track's volume (0-1) relative to the rest of the song, from song.volume; multiplied with Config.MUSIC_VOLUME by applyVolume
+---@field notes _SoundTrackNote[] this track's original note events (with unclamped velocity), captured at load() -- applyDynamics reads from this rather than the track's live notes so repeated calls with different Config.MUSIC_VOLUME_MIN/MAX bounds don't compound clamps on top of clamps
 
 ---@class MidiPlayer.Song
 ---@field path string path to a .mid file (e.g. "assets/songs/theme.mid"), passed straight to playdate.sound.sequence.new
@@ -69,9 +72,9 @@ end
 
 -- Loads `song`, stopping and replacing whatever's currently loaded. Every
 -- track with at least one note gets an instrument (song.map[i] if given,
--- else guessPatch's heuristic), and Config.MUSIC_VOLUME is applied
--- immediately -- see applyVolume. Does not start playback; call play()
--- once loaded.
+-- else guessPatch's heuristic), and Config.MUSIC_VOLUME /
+-- Config.MUSIC_VOLUME_MIN/MAX are applied immediately -- see applyVolume
+-- and applyDynamics. Does not start playback; call play() once loaded.
 ---@param song MidiPlayer.Song
 function MidiPlayer.load(song)
 	MidiPlayer.stop()
@@ -94,14 +97,17 @@ function MidiPlayer.load(song)
 				track:setInstrument(inst)
 				MidiPlayer.tracks[#MidiPlayer.tracks + 1] = {
 					index = i,
+					track = track,
 					patch = patch,
 					inst = inst,
 					relVolume = relVolume[i] or 1,
+					notes = notes,
 				}
 			end
 		end
 	end
 	MidiPlayer.applyVolume()
+	MidiPlayer.applyDynamics()
 end
 
 local function onFinish()
@@ -138,6 +144,35 @@ end
 function MidiPlayer.applyVolume()
 	for _, t in ipairs(MidiPlayer.tracks) do
 		t.inst:setVolume(Config.MUSIC_VOLUME * t.relVolume)
+	end
+end
+
+-- Clamps every track's original note velocities (t.notes, captured at
+-- load()) into [Config.MUSIC_VOLUME_MIN, Config.MUSIC_VOLUME_MAX] and
+-- rewrites the track's notes to match -- compressing a song's per-note
+-- dynamic range instead of scaling it uniformly like applyVolume does.
+-- Clamping from the cached original notes (rather than track:getNotes(),
+-- which would already reflect a previous clamp) means calling this
+-- repeatedly with different bounds doesn't compound. track:setNotes() is
+-- Lua-side sugar that *adds* notes rather than replacing them -- the
+-- underlying C API has no bulk "replace" -- hence the clearNotes() first.
+-- Called automatically at the end of load(); call again any time
+-- Config.MUSIC_VOLUME_MIN/MAX changes at runtime. Safe to call with nothing
+-- loaded.
+function MidiPlayer.applyDynamics()
+	local lo, hi = Config.MUSIC_VOLUME_MIN, Config.MUSIC_VOLUME_MAX
+	for _, t in ipairs(MidiPlayer.tracks) do
+		local clamped = {}
+		for i, note in ipairs(t.notes) do
+			clamped[i] = {
+				step = note.step,
+				note = note.note,
+				length = note.length,
+				velocity = Utils.clamp(note.velocity or 1, lo, hi),
+			}
+		end
+		t.track:clearNotes()
+		t.track:setNotes(clamped)
 	end
 end
 
