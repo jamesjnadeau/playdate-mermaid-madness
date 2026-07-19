@@ -87,10 +87,10 @@ Config.SHIP_MAX_SPEED = math.floor((Config.WIND_SPEED_MAX - Config.WIND_SPEED_MI
 Config.SHIP_DEFAULT_SPEED = math.floor(Config.SHIP_MAX_SPEED * 0.1 )    -- guaranteed baseline forward speed regardless of sail/wind
 Config.SHIP_ACCEL        = math.floor(Config.SHIP_MAX_SPEED * 0.3 )       -- pixels / second, added per second while easing toward target speed
 Config.SHIP_TURN_SCALE = 0.55   -- crank-degrees -> heading-degrees multiplier
-Config.SHIP_MAX_HEALTH = 5
+Config.SHIP_MAX_HEALTH = 3
 Config.SHIP_LENGTH    = 20      -- half-length of hull when drawn, default 22
 Config.SHIP_COLLIDE_RADIUS = Config.SHIP_LENGTH      -- collision radius
-Config.SHIP_BEAM      = 7       -- half-width of hull when drawn
+Config.SHIP_BEAM      = math.floor(Config.SHIP_LENGTH * 0.4)       -- half-width of hull when drawn
 Config.SHIP_WIND_POWER_MULTIPLIER = 1.2
 -- Continuous drag opposing every ship's speed: each second a ship loses this
 -- fraction of its current speed to water resistance, on top of easing toward
@@ -251,7 +251,7 @@ Config.WIND_CHANGE_INTERVAL_FLOOR        = 4   -- seconds; LEVEL_WIND_CHANGE_INT
 -- Settings toggle), meant for shipping a capped trade-show/kiosk build.
 -- Off by default -- flip to true and rebuild to produce a demo .pdx.
 Config.DEMO_MODE = false
-Config.DEMO_MAX_LEVEL = 3 -- levels GameSceneDemo plays through before DemoOverScene ends the run
+Config.DEMO_MAX_LEVEL = 5 -- levels GameSceneDemo plays through before DemoOverScene ends the run
 
 ------------------
 -- Title screen --
