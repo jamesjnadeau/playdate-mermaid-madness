@@ -1,7 +1,7 @@
 -- EnemyKraken.lua
 -- A slow, tougher Enemy variant with a round body instead of a ship hull.
--- Draws its own body + a row of 3 small circles trailing off ahead of it,
--- doubling as a direction indicator in place of the base Enemy's bow eye-dot
+-- Draws its own body + a chevron of 3 small circles ahead of it, doubling
+-- as a direction indicator in place of the base Enemy's bow eye-dot
 -- (see EnemyKraken:draw, which overrides Enemy:draw/Ship:draw entirely rather
 -- than filling a self.hull polygon). All tuning lives in Config.ENEMY_KRAKEN_*
 -- (see ConfigEnemy.lua).
@@ -53,14 +53,22 @@ function EnemyKraken:draw()
 		gfx.drawCircleAtPoint(self.x, self.y, Config.ENEMY_KRAKEN_BODY_RADIUS)
 	end
 
-	-- 3 small circles trailing off to one side, spaced out ahead of the body
-	-- along the heading -- reads as both a tentacle trail and a direction
-	-- indicator.
+	-- 5 small circles: a chevron of 3 ahead of the body -- one at the tip and
+	-- two swept back to either side -- reading as an arrow pointing along the
+	-- heading, plus 2 more flanking the body itself on its left/right sides.
 	local hx, hy = Utils.heading(self.heading)
+	local px, py = -hy, hx -- perpendicular to heading
 	gfx.setColor(self.color)
-	for i = 1, 3 do
-		local d = Config.ENEMY_KRAKEN_DOT_OFFSET + (i - 1) * Config.ENEMY_KRAKEN_DOT_SPACING
-		gfx.fillCircleAtPoint(self.x + hx * d, self.y + hy * d, Config.ENEMY_KRAKEN_DOT_RADIUS)
+	local tipDist = Config.ENEMY_KRAKEN_DOT_OFFSET + Config.ENEMY_KRAKEN_DOT_SPACING
+	gfx.fillCircleAtPoint(self.x + hx * tipDist, self.y + hy * tipDist, Config.ENEMY_KRAKEN_DOT_RADIUS)
+	for _, side in ipairs({ -1, 1 }) do
+		local wx = self.x + hx * Config.ENEMY_KRAKEN_DOT_OFFSET + px * side * Config.ENEMY_KRAKEN_DOT_SPACING
+		local wy = self.y + hy * Config.ENEMY_KRAKEN_DOT_OFFSET + py * side * Config.ENEMY_KRAKEN_DOT_SPACING
+		gfx.fillCircleAtPoint(wx, wy, Config.ENEMY_KRAKEN_DOT_RADIUS)
+
+		local sx = self.x + px * side * Config.ENEMY_KRAKEN_DOT_OFFSET
+		local sy = self.y + py * side * Config.ENEMY_KRAKEN_DOT_OFFSET
+		gfx.fillCircleAtPoint(sx, sy, Config.ENEMY_KRAKEN_DOT_RADIUS)
 	end
 
 	if self.health < self.maxHealth then
