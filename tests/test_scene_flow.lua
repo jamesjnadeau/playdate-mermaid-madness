@@ -213,7 +213,30 @@ function TestSceneFlow:testTitleSettingsToggleAndBack()
 	lu.assertEquals(currentClassName(), "TitleScene")
 end
 
--- SETTING_ROWS[4] is the Song row, [5] is Volume -- see SettingsScene.lua's
+-- Unlike the other HUD_SHOW_* rows, toggling "FPS Counter" (SETTING_ROWS[4])
+-- also has to mirror the value onto Noble.showFPS -- see SettingsScene.lua's
+-- activate().
+function TestSceneFlow:testTitleSettingsFpsCounterTogglesNobleShowFPS()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
+	Noble.Input.fire("AButtonDown")
+
+	for _ = 1, 3 do
+		Noble.Input.fire("downButtonDown") -- Wind Speed -> Wind Direction -> Player Speed -> FPS Counter
+	end
+	lu.assertEquals(Noble.currentScene().selected, 4)
+
+	local before = Config.HUD_SHOW_FPS
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(Config.HUD_SHOW_FPS, not before)
+	lu.assertEquals(Noble.showFPS, not before)
+
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(Config.HUD_SHOW_FPS, before)
+	lu.assertEquals(Noble.showFPS, before)
+end
+
+-- SETTING_ROWS[5] is the Song row, [6] is Volume -- see SettingsScene.lua's
 -- CATEGORIES. mock_noble.lua's playdate.file.listFiles always returns an
 -- empty list (no real .pdx bundle under lua5.4), so the Song row has
 -- nothing to cycle through; this only exercises that it's a safe no-op.
@@ -222,17 +245,17 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
 
-	for _ = 1, 3 do
-		Noble.Input.fire("downButtonDown") -- HUD(3) -> Song
+	for _ = 1, 4 do
+		Noble.Input.fire("downButtonDown") -- HUD(4) -> Song
 	end
-	lu.assertEquals(Noble.currentScene().selected, 4)
+	lu.assertEquals(Noble.currentScene().selected, 5)
 
 	Noble.Input.fire("rightButtonDown") -- no songs bundled: no-op
 	lu.assertNil(Config.MUSIC_SONG)
 	lu.assertFalse(MidiPlayer.playing)
 
 	Noble.Input.fire("downButtonDown") -- Song -> Volume
-	lu.assertEquals(Noble.currentScene().selected, 5)
+	lu.assertEquals(Noble.currentScene().selected, 6)
 
 	local before = Config.MUSIC_VOLUME
 	Noble.Input.fire("rightButtonDown")
@@ -251,8 +274,8 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 	lu.assertEquals(Config.MUSIC_VOLUME, 0)
 end
 
--- SETTING_ROWS[6] is Volume Min, [7] is Volume Max -- follows directly from
--- the [4]/[5] comment above. Exercises the min<=max cross-clamp in
+-- SETTING_ROWS[7] is Volume Min, [8] is Volume Max -- follows directly from
+-- the [5]/[6] comment above. Exercises the min<=max cross-clamp in
 -- SettingsScene.lua's adjustValue: pushing min above the current max drags
 -- max along with it, and vice versa.
 function TestSceneFlow:testTitleSettingsSoundSectionVolumeMinMaxCrossClamp()
@@ -260,10 +283,10 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeMinMaxCrossClamp()
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
 
-	for _ = 1, 5 do
-		Noble.Input.fire("downButtonDown") -- HUD(3) + Song + Volume -> Volume Min
+	for _ = 1, 6 do
+		Noble.Input.fire("downButtonDown") -- HUD(4) + Song + Volume -> Volume Min
 	end
-	lu.assertEquals(Noble.currentScene().selected, 6)
+	lu.assertEquals(Noble.currentScene().selected, 7)
 
 	lu.assertEquals(Config.MUSIC_VOLUME_MIN, 0)
 	lu.assertEquals(Config.MUSIC_VOLUME_MAX, 1)
@@ -276,7 +299,7 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeMinMaxCrossClamp()
 	lu.assertEquals(Config.MUSIC_VOLUME_MAX, 1)
 
 	Noble.Input.fire("downButtonDown") -- Volume Min -> Volume Max
-	lu.assertEquals(Noble.currentScene().selected, 7)
+	lu.assertEquals(Noble.currentScene().selected, 8)
 
 	-- Drive Volume Max back below Volume Min: Min should follow it down.
 	for _ = 1, 25 do
@@ -288,8 +311,8 @@ end
 
 -- Tuning is no longer reachable directly from the title screen -- it's the
 -- last row of SettingsScene's "Tuning" section (see SettingsScene.lua's
--- CATEGORIES: 3 HUD rows + Song + Volume + Volume Min + Volume Max precede
--- "Open Tuning Menu" in SETTING_ROWS, so 7 downButtonDowns from Settings'
+-- CATEGORIES: 4 HUD rows + Song + Volume + Volume Min + Volume Max precede
+-- "Open Tuning Menu" in SETTING_ROWS, so 8 downButtonDowns from Settings'
 -- default selection=1 lands on it). TuningScene.selected then starts on
 -- ROWS/SETTING_ROWS[1], which is always Config.WATER_GRID (CATEGORIES[1] =
 -- "Water", its first item) -- see TuningScene.lua.
@@ -297,8 +320,8 @@ local function enterTuningFromTitle()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
-	for _ = 1, 7 do
-		Noble.Input.fire("downButtonDown") -- HUD(3) + Song + Volume + Volume Min + Volume Max -> "Open Tuning Menu"
+	for _ = 1, 8 do
+		Noble.Input.fire("downButtonDown") -- HUD(4) + Song + Volume + Volume Min + Volume Max -> "Open Tuning Menu"
 	end
 	Noble.Input.fire("AButtonDown")
 end

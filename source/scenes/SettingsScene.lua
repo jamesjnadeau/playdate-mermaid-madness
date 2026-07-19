@@ -78,6 +78,7 @@ local CATEGORIES = {
 		{ type = "boolean", key = "HUD_SHOW_WIND_SPEED", label = "Wind Speed" },
 		{ type = "boolean", key = "HUD_SHOW_WIND_DIRECTION", label = "Wind Direction" },
 		{ type = "boolean", key = "HUD_SHOW_PLAYER_SPEED", label = "Player Speed" },
+		{ type = "boolean", key = "HUD_SHOW_FPS", label = "FPS Counter" },
 	} },
 	{ name = "Sound", items = {
 		{ type = "song", label = "Song" },
@@ -239,6 +240,11 @@ local function activate()
 	local item = SETTING_ROWS[scene.selected]
 	if item.type == "boolean" then
 		Config[item.key] = not Config[item.key]
+		if item.key == "HUD_SHOW_FPS" then
+			-- Noble's own update loop checks Noble.showFPS, not Config directly
+			-- (unlike the other HUD_SHOW_* fields) -- see Noble.lua's showFPS field.
+			Noble.showFPS = Config.HUD_SHOW_FPS
+		end
 		scene:rebuild()
 	elseif item.type == "action" then
 		item.action()

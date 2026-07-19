@@ -199,6 +199,12 @@ Config.OFFSCREEN_INDICATOR_FLASH_PERIOD = 0.4
 Config.HUD_SHOW_WIND_SPEED     = true
 Config.HUD_SHOW_WIND_DIRECTION = true
 Config.HUD_SHOW_PLAYER_SPEED   = true
+-- Noble Engine's built-in FPS counter (playdate.drawFPS, top-left). Unlike
+-- the HUD_SHOW_* fields above, this doesn't get read directly at draw time --
+-- it's mirrored onto Noble.showFPS at boot (main.lua) and whenever
+-- SettingsScene's "FPS Counter" row is toggled, since that's the flag Noble's
+-- own update loop actually checks. See Noble.lua's showFPS field.
+Config.HUD_SHOW_FPS = true
 
 -- Health hearts (top-left): drawn one glyph at a time so spacing is exact
 -- regardless of what the font reports for a run of hearts + spaces.

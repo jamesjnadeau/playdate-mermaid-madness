@@ -45,6 +45,11 @@ import "scenes/DemoOverScene"
 -- Lock to a fixed 30fps so our fixed-timestep (Config.DT) matches wall-clock.
 playdate.display.setRefreshRate(Config.REFRESH)
 
+-- Noble's built-in FPS counter -- player-facing on/off switch lives in
+-- SettingsScene's HUD section (Config.HUD_SHOW_FPS), which also mirrors onto
+-- Noble.showFPS whenever it's toggled. This just applies the boot default.
+Noble.showFPS = Config.HUD_SHOW_FPS
+
 -- Which scene to boot into: Config.START_SCENE, unless overridden via the
 -- MERMAID_START_SCENE environment variable (see tools/simulate.sh, which
 -- forwards it as a Simulator launch argument since the Lua sandbox has no

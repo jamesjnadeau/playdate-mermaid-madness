@@ -213,6 +213,7 @@ function NobleScene:resume() end
 -- Noble (source/libraries/noble/Noble.lua) stand-in --------------------------
 
 Noble = {}
+Noble.showFPS = false -- mirrors the real Noble.lua default; SettingsScene's "FPS Counter" row writes here too
 
 local currentScene = nil
 

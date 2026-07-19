@@ -27,6 +27,9 @@
 --  - Config.MUSIC_VOLUME/MUSIC_SONG (covered by SettingsScene's own Sound
 --    section instead; MUSIC_SONG is a filename string besides, which this
 --    scene's number/boolean row types don't support).
+--  - Config.HUD_SHOW_FPS (covered by SettingsScene's HUD section instead --
+--    toggling it needs a side effect, syncing Noble.showFPS, that this
+--    scene's generic toggleBoolean doesn't perform).
 
 import "scripts/Config"
 import "scripts/Utils"
