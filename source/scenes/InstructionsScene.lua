@@ -58,6 +58,15 @@ function InstructionsScene:advanceStep()
 	self.outOfRangeSeconds = 0
 end
 
+-- Pins wind speed to Config.SHIP_MAX_SPEED for the whole walkthrough (see
+-- GameScene:fixedWindSpeed) so every step plays out at a predictable, known
+-- speed instead of whatever the normal wander-over-time wind happened to
+-- roll -- wind direction still wanders normally, this only pins speed.
+---@return number
+function InstructionsScene:fixedWindSpeed()
+	return Config.SHIP_MAX_SPEED
+end
+
 -- Which side the current step is teaching, or nil if it's not a broadside
 -- step at all -- shared by input handling, the dummy spawner, and rendering.
 ---@return string? "port" | "starboard"
@@ -225,26 +234,59 @@ function InstructionsScene:screenOffsetHitsInstructionBox(ang, dist)
 	return sx >= left and sy <= bottom
 end
 
+-- Degree offsets from the ship's forward heading to try the dummy at, in
+-- order -- all strictly between 0 and 180 so every candidate stays on the
+-- same side of the ship (GameScene:pickTarget's cross-product side test),
+-- just as the ship's heading was at spawn time. 90 (dead broadside, the
+-- natural "beam" position) is tried first; the rest are fallbacks for
+-- dodging the instruction card (see screenOffsetHitsInstructionBox below) --
+-- spread across the valid half-circle rather than a single fixed fallback,
+-- since the card's screen position is fixed but which offset lands clear of
+-- it depends on the ship's current heading. A class field (not a local) so
+-- tests can verify the side-preserving property directly.
+InstructionsScene.BROADSIDE_ANGLE_OFFSETS = { 90, 45, 135, 20, 160 }
+
 function InstructionsScene:spawnDummyTarget()
 	local ship = self.ship
 	local side = self:currentBroadsideSide()
-	local ang = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
+	local sign = side == "starboard" and 1 or -1
 	local dist = Config.INSTRUCTIONS_DUMMY_DISTANCE
 
-	if self:screenOffsetHitsInstructionBox(ang, dist) then
-		-- Spawn on the opposite side of the ship instead: it's a point
-		-- reflection through screen-center, which the instruction card (only
-		-- ever near the top edge, well above center) can never also cover.
-		-- The target stays reachable either way -- pickTarget re-checks side
-		-- against the ship's *current* heading each time a charge begins, not
-		-- the heading at spawn time.
-		ang = Utils.wrapDeg(ang + 180)
+	-- Falls back to the first (default, dead-broadside) candidate if every
+	-- offset hits the card -- a visual overlap is a far smaller problem than
+	-- spawning the target on the wrong side, which the old "reflect through
+	-- screen-center" fallback did (a 180 degree rotation flips the
+	-- cross-product sign, silently moving the dummy to the *other* side --
+	-- see GameScene:pickTarget -- so it could never be locked onto with the
+	-- very button this step was teaching).
+	local offsets = InstructionsScene.BROADSIDE_ANGLE_OFFSETS
+	local ang = Utils.wrapDeg(ship.heading + sign * offsets[1])
+	for _, offset in ipairs(offsets) do
+		local candidate = Utils.wrapDeg(ship.heading + sign * offset)
+		if not self:screenOffsetHitsInstructionBox(candidate, dist) then
+			ang = candidate
+			break
+		end
 	end
 
 	local hx, hy = Utils.heading(ang)
 	local ex, ey = ship.x + hx * dist, ship.y + hy * dist
 	local facing = Utils.angleTo(ex, ey, ship.x, ship.y)
 	self.enemies[#self.enemies + 1] = EnemyDummy(ex, ey, facing)
+end
+
+-- Plain distance to the current broadside step's dummy, ignoring
+-- GameScene:pickTarget's cross-product side test -- that test is sensitive
+-- to the ship's *current* heading, which can drift after the dummy spawns
+-- (nothing stops the player from still cranking during a broadside step),
+-- so using it here could flag a target that's sitting right next to the
+-- ship as "out of range" just because the ship turned. The literal "out of
+-- range" hint text should mean literal range, not side.
+---@return boolean
+function InstructionsScene:currentDummyInRange()
+	local dummy = self.enemies[1]
+	if not dummy then return false end
+	return Utils.dist(self.ship.x, self.ship.y, dummy.x, dummy.y) <= Config.TARGET_RANGE
 end
 
 function InstructionsScene:tickGame()
@@ -259,7 +301,7 @@ function InstructionsScene:tickGame()
 	-- in range" reflects actual elapsed time, even if the player pauses
 	-- between attempts -- see onBroadsideButtonDown/stepSubline/
 	-- shouldFlashOffscreenIndicator.
-	if self:pickTarget(side) then
+	if self:currentDummyInRange() then
 		self.outOfRangeSeconds = 0
 	else
 		self.outOfRangeSeconds = self.outOfRangeSeconds + Config.DT

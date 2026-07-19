@@ -177,12 +177,17 @@ Extends `GameScene` (like `GameSceneMain`/`GameSceneTraining`) instead of
 `NobleScene` directly, so the player's own ship is really sailing on real
 water while they work through a step-by-step walkthrough, drawn above the
 ship (which, like every `GameScene`, sits camera-locked at screen center) so
-the water, wake, and practice target stay visible underneath. Every control
-has two directions, and each direction gets its own step (crank one way, then
-the other; Up, then Down; Left broadside, then Right), so the player actually
-exercises both instead of just whichever's more convenient. Each step only
-clears once the player actually performs *that* direction enough — see
-`Config.INSTRUCTIONS_*`:
+the water, wake, and practice target stay visible underneath. Wind speed is
+pinned to `Config.SHIP_MAX_SPEED` for the whole scene (direction still
+wanders normally) via `InstructionsScene:fixedWindSpeed`, overriding
+`GameScene:fixedWindSpeed` (a hook, nil by default meaning "normal random
+wind" — kept general rather than hardcoded to `InstructionsScene` since
+`GameSceneTraining` is expected to eventually expose it as a player-adjustable
+setting, not implemented yet). Every control has two directions, and each
+direction gets its own step (crank one way, then the other; Up, then Down;
+Left broadside, then Right), so the player actually exercises both instead of
+just whichever's more convenient. Each step only clears once the player
+actually performs *that* direction enough — see `Config.INSTRUCTIONS_*`:
 - Crank steps: `INSTRUCTIONS_CRANK_SECONDS` of cumulative time spent actively
   cranking that sign of delta (no discrete "press" to count, see
   `InstructionsScene:onCranked`).
@@ -191,11 +196,16 @@ clears once the player actually performs *that* direction enough — see
   specific button — a press only counts if `pickTarget` finds an in-range
   target (see `InstructionsScene:onBroadsideButtonDown`), not just any press.
   A stationary, harmless `EnemyDummy` (can't move, ram damage is 0) spawns on
-  the side the current step is teaching, at `INSTRUCTIONS_DUMMY_DISTANCE`; if
-  destroyed, a fresh one immediately takes its place (see
-  `InstructionsScene:tickGame`/`spawnDummyTarget`) so there's always
-  something to aim the button being taught at. If that target stays out of
-  range for `INSTRUCTIONS_OUT_OF_RANGE_HINT_SECONDS` (tracked continuously in
+  the side the current step is teaching, at `INSTRUCTIONS_DUMMY_DISTANCE`
+  (falling back across `InstructionsScene.BROADSIDE_ANGLE_OFFSETS` — always
+  within the same side's valid half-circle, never straight across, which
+  would flip which side `pickTarget` finds it on — if the default beam
+  position would land under the instruction card); if destroyed, a fresh one
+  immediately takes its place (see `InstructionsScene:tickGame`/
+  `spawnDummyTarget`) so there's always something to aim the button being
+  taught at. If that target stays out of range (plain distance, not
+  `pickTarget`'s side test — see `InstructionsScene:currentDummyInRange`) for
+  `INSTRUCTIONS_OUT_OF_RANGE_HINT_SECONDS` (tracked continuously in
   `tickGame`, default 5s), the hint text escalates from "get closer" to
   pointing at the target's off-screen indicator, which starts flashing (see
   `InstructionsScene:shouldFlashOffscreenIndicator`, overriding

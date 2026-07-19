@@ -123,7 +123,8 @@ function GameScene:resetGame(sceneProperties)
 	self.windDirection = math.random() * 360
 	self.windDirectionTarget = self.windDirection
 	self.windDirectionChangeRate = Config.WIND_DIRECTION_CHANGE_RATE_MIN
-	self.windSpeed = Config.WIND_SPEED_MIN + math.random() * (Config.WIND_SPEED_MAX - Config.WIND_SPEED_MIN)
+	self.windSpeed = self:fixedWindSpeed()
+		or (Config.WIND_SPEED_MIN + math.random() * (Config.WIND_SPEED_MAX - Config.WIND_SPEED_MIN))
 	self.windSpeedTarget = self.windSpeed
 	self.windSpeedChangeRate = self.windSpeedChangeRateMin
 	self.windChangeIntervalDuration = self.windChangeIntervalMin
@@ -157,6 +158,21 @@ function GameScene:windTuning()
 		changeIntervalMin = Config.WIND_CHANGE_INTERVAL_MIN,
 		changeIntervalMax = Config.WIND_CHANGE_INTERVAL_MAX,
 	}
+end
+
+-- Hook for a scene that wants wind speed pinned to one fixed value instead
+-- of the normal wander-over-time system (see resetGame above and the speed
+-- half of tickGame's wind-change block below): nil (the default) means "use
+-- the normal random wind speed"; a number locks windSpeed/windSpeedTarget to
+-- exactly that value forever (wind direction still wanders normally either
+-- way -- this only pins speed). InstructionsScene overrides this to
+-- Config.SHIP_MAX_SPEED so its tutorial steps play out at a predictable,
+-- ship-matching wind. Kept as a scene-level hook (not hardcoded to
+-- InstructionsScene) since GameSceneTraining is expected to eventually
+-- expose this as a player-adjustable setting.
+---@return number?
+function GameScene:fixedWindSpeed()
+	return nil
 end
 
 -- ---------------------------------------------------------------------------
@@ -381,8 +397,9 @@ function GameScene:tickGame()
 		self.windEaseTimer = math.min(self.windEaseDuration, self.windEaseTimer + dt)
 	end
 	if windSettled and self.windChangeTimer <= 0 then
-		self.windSpeedTarget = Config.WIND_SPEED_MIN
-			+ math.random() * (Config.WIND_SPEED_MAX - Config.WIND_SPEED_MIN)
+		local fixedSpeed = self:fixedWindSpeed()
+		self.windSpeedTarget = fixedSpeed
+			or (Config.WIND_SPEED_MIN + math.random() * (Config.WIND_SPEED_MAX - Config.WIND_SPEED_MIN))
 		self.windSpeedChangeRate = self.windSpeedChangeRateMin
 			+ math.random() * (self.windSpeedChangeRateMax - self.windSpeedChangeRateMin)
 

@@ -406,3 +406,41 @@ function TestSceneFlow:testGameSceneDemoAtCapEndsViaDemoOverSceneThenBackToTitle
 	Noble.Input.fire("AButtonDown")
 	lu.assertEquals(currentClassName(), "TitleScene")
 end
+
+-- --- InstructionsScene wind / broadside-spawn-side fixes -------------------
+
+function TestSceneFlow:testInstructionsFixedWindSpeedIsShipMaxSpeed()
+	Noble.Input.fire("downButtonDown") -- 2 -> 3, "Instructions"
+	Noble.Input.fire("AButtonDown")
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene:fixedWindSpeed(), Config.SHIP_MAX_SPEED)
+end
+
+-- Regression check for a spawn-side bug: whenever the default dead-broadside
+-- position (BROADSIDE_ANGLE_OFFSETS[1] == 90) would land under the
+-- instruction card, spawnDummyTarget falls back to another offset in the
+-- list -- every one of those must stay on the *same* side of the ship as the
+-- default (same sign of GameScene:pickTarget's cross product). The previous
+-- fallback rotated a full 180 degrees instead, which flips that sign and
+-- silently strands the dummy on the wrong side, permanently unreachable by
+-- the very button the step is teaching (see stepSubline's "out of range"
+-- hint firing constantly instead of only after a real 5-second range
+-- failure).
+function TestSceneFlow:testInstructionsBroadsideAngleOffsetsPreserveSide()
+	local heading = 37 -- arbitrary, non-axis-aligned, to actually exercise the math
+	local fx, fy = Utils.heading(heading)
+
+	for _, sign in ipairs({ 1, -1 }) do
+		local offsets = InstructionsScene.BROADSIDE_ANGLE_OFFSETS
+		local baseAng = Utils.wrapDeg(heading + sign * offsets[1])
+		local bx, by = Utils.heading(baseAng)
+		local baseCrossPositive = (fx * by - fy * bx) > 0
+
+		for _, offset in ipairs(offsets) do
+			local ang = Utils.wrapDeg(heading + sign * offset)
+			local hx, hy = Utils.heading(ang)
+			local crossPositive = (fx * hy - fy * hx) > 0
+			lu.assertEquals(crossPositive, baseCrossPositive)
+		end
+	end
+end
