@@ -44,6 +44,14 @@ Config.UPGRADES = {
 		format = function(v) return math.floor(v) .. " dmg" end,
 	},
 	{
+		id = "max_health",
+		title = "Extra Heart",
+		description = "Adds an additional heart of max health, shown in the HUD.",
+		configKey = "SHIP_MAX_HEALTH",
+		delta = 1,
+		format = function(v) return math.floor(v) .. " hearts" end,
+	},
+	{
 		id = "collision_radius",
 		title = "Slim Hull",
 		description = "Smaller collision radius makes the ship easier to dodge with.",
