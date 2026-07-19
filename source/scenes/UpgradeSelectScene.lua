@@ -13,13 +13,26 @@ import "scripts/ConfigUpgrades"
 
 local gfx <const> = playdate.graphics
 
-UpgradeSelectScene = {}
-class("UpgradeSelectScene").extends(NobleScene)
+---@class UpgradeSelectScene : NobleScene
+---@field level integer
+---@field completedLevel integer
+---@field totalDefeated integer
+---@field upgrades Config.Upgrade[] this round's 3 random picks
+---@field selected integer index into self.upgrades
+---@field phase string "select" | "result"
+---@field tree table playout tree, see rebuild()
+---@field img _Image drawn image of the playout tree, see rebuild()
+---@field upgrade Config.Upgrade set once phase == "result"
+---@field oldValue number set once phase == "result"
+---@field newValue number set once phase == "result"
+UpgradeSelectScene = class("UpgradeSelectScene").extends(NobleScene) or UpgradeSelectScene
 
 local scene = nil
 
 -- Draws `count` distinct entries from Config.UPGRADES without replacement
 -- (falls back to fewer if the pool is smaller than `count`).
+---@param count integer
+---@return Config.Upgrade[]
 local function pickUpgrades(count)
 	local pool = {}
 	for i, upgrade in ipairs(Config.UPGRADES) do
@@ -36,6 +49,9 @@ end
 -- Selection screen: list of upgrade titles (highlighted row = black
 -- background/white text, same as EnemySelectScene/SettingsScene) plus the
 -- description of whichever one is currently highlighted.
+---@param selectedIndex integer
+---@param upgrades Config.Upgrade[]
+---@return table playout tree
 local function buildSelectTree(selectedIndex, upgrades)
 	local children = {
 		playout.text.new("Choose an Upgrade"),
@@ -73,6 +89,10 @@ end
 
 -- Result screen: the chosen upgrade's title plus a before/after readout of
 -- the stat it touched.
+---@param upgrade Config.Upgrade
+---@param oldValue number
+---@param newValue number
+---@return table playout tree
 local function buildResultTree(upgrade, oldValue, newValue)
 	local children = {
 		playout.text.new(upgrade.title .. "!"),
@@ -95,6 +115,7 @@ local function buildResultTree(upgrade, oldValue, newValue)
 	return playout.tree.new(root)
 end
 
+---@param sceneProperties? table
 function UpgradeSelectScene:init(sceneProperties)
 	UpgradeSelectScene.super.init(self, sceneProperties)
 	self.backgroundColor = gfx.kColorWhite
@@ -132,6 +153,7 @@ function UpgradeSelectScene:rebuild()
 	self.img = self.tree:draw()
 end
 
+---@param delta integer
 local function moveSelection(delta)
 	if not scene or scene.phase ~= "select" then return end
 	local count = #scene.upgrades

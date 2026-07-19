@@ -9,11 +9,14 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-LevelCompleteScene = {}
-class("LevelCompleteScene").extends(NobleScene)
+---@class LevelCompleteScene : NobleScene
+---@field completedLevel integer
+---@field totalDefeated integer
+LevelCompleteScene = class("LevelCompleteScene").extends(NobleScene) or LevelCompleteScene
 
 local scene = nil
 
+---@param sceneProperties? table
 function LevelCompleteScene:init(sceneProperties)
 	LevelCompleteScene.super.init(self, sceneProperties)
 	self.backgroundColor = gfx.kColorWhite

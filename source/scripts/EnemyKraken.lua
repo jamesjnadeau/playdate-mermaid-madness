@@ -12,7 +12,8 @@ import "scripts/Enemy"
 
 local gfx <const> = playdate.graphics
 
-class("EnemyKraken").extends(Enemy)
+---@class EnemyKraken : Enemy
+EnemyKraken = class("EnemyKraken").extends(Enemy) or EnemyKraken
 
 -- Unlocked starting this level (see Config.ENEMY_KRAKEN_MIN_LEVEL /
 -- Enemy.minLevel / GameScene:spawnEnemy).
@@ -21,6 +22,9 @@ EnemyKraken.minLevel = Config.ENEMY_KRAKEN_MIN_LEVEL
 -- See Enemy.displayName.
 EnemyKraken.displayName = "Kraken"
 
+---@param x number
+---@param y number
+---@param heading? number
 function EnemyKraken:init(x, y, heading)
 	EnemyKraken.super.init(self, x, y, heading)
 
@@ -43,6 +47,7 @@ end
 
 -- Bounding radius of the body circle + the furthest chevron dot -- see
 -- Ship:bodyRadius/buildBodyImage.
+---@return number
 function EnemyKraken:bodyRadius()
 	local dotReach = Config.ENEMY_KRAKEN_DOT_OFFSET + Config.ENEMY_KRAKEN_DOT_SPACING + Config.ENEMY_KRAKEN_DOT_RADIUS
 	return math.max(Config.ENEMY_KRAKEN_BODY_RADIUS, dotReach)
@@ -54,6 +59,8 @@ end
 -- 5 small circles: a chevron of 3 ahead of the body -- one at the tip and
 -- two swept back to either side -- reading as an arrow pointing along the
 -- heading, plus 2 more flanking the body itself on its left/right sides.
+---@param cx number
+---@param cy number
 function EnemyKraken:drawBodyLocal(cx, cy)
 	gfx.setColor(self.color)
 	gfx.fillCircleAtPoint(cx, cy, Config.ENEMY_KRAKEN_BODY_RADIUS)

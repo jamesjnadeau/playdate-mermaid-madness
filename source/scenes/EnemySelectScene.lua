@@ -10,14 +10,19 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-EnemySelectScene = {}
-class("EnemySelectScene").extends(NobleScene)
+---@class EnemySelectScene : NobleScene
+---@field selected integer index into GameScene.enemyTypes
+---@field tree table playout tree, see rebuild()
+---@field img _Image drawn image of the playout tree, see rebuild()
+EnemySelectScene = class("EnemySelectScene").extends(NobleScene) or EnemySelectScene
 
 local scene = nil
 
 -- Builds a fresh playout tree highlighting `selectedIndex`. Rebuilt (rather
 -- than mutated in place) whenever the selection changes -- the list is tiny
 -- so this stays cheap and keeps the highlight logic in one place.
+---@param selectedIndex integer
+---@return table playout tree
 local function buildTree(selectedIndex)
 	local children = {
 		playout.text.new("Select Enemy"),
@@ -49,6 +54,7 @@ local function buildTree(selectedIndex)
 	return playout.tree.new(root)
 end
 
+---@param ... any
 function EnemySelectScene:init(...)
 	EnemySelectScene.super.init(self, ...)
 	self.backgroundColor = gfx.kColorWhite
@@ -84,6 +90,7 @@ function EnemySelectScene:rebuild()
 	self.img = self.tree:draw()
 end
 
+---@param delta integer
 local function moveSelection(delta)
 	if not scene then return end
 	local count = #GameScene.enemyTypes

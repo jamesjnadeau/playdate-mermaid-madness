@@ -9,11 +9,14 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-WindShiftScene = {}
-class("WindShiftScene").extends(NobleScene)
+---@class WindShiftScene : NobleScene
+---@field level integer
+---@field totalDefeated integer
+WindShiftScene = class("WindShiftScene").extends(NobleScene) or WindShiftScene
 
 local scene = nil
 
+---@param sceneProperties? table
 function WindShiftScene:init(sceneProperties)
 	WindShiftScene.super.init(self, sceneProperties)
 	self.backgroundColor = gfx.kColorWhite

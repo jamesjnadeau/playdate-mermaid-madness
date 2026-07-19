@@ -6,3 +6,6 @@
 .DS_Store
 .vscode/*
 !.vscode/settings.json.example
+
+# LuaCATS type stubs (editor tooling only, see tools/fetch-luacats.sh)
+/vendor/

@@ -8,7 +8,21 @@ import "scripts/Ship"
 
 local gfx <const> = playdate.graphics
 
-class("Enemy").extends(Ship)
+---@class Enemy : Ship
+---@field radius number collision radius
+---@field maxHealth number see Enemy:draw's health bar, shown once health < maxHealth
+---@field teleportWarning? number seconds left before relocation, nil when not pending -- see Enemy:updateLeash
+---@field moveSpeed number
+---@field accel number
+---@field turnRateMax number
+---@field turnRateMin number
+---@field turnRateSpeedMultiplier number
+---@field windMultiplier number
+---@field eyeOffset number px the bow eye-dot sits ahead of center
+---@field damage number damage dealt to the player ship on ramming
+---@field minLevel number class-level: lowest self.level this enemy type may spawn at
+---@field displayName string class-level: human-readable label, e.g. EnemySelectScene's picker
+Enemy = class("Enemy").extends(Ship) or Enemy
 
 -- Lowest self.level this enemy type is allowed to spawn at -- see
 -- Config.ENEMY_MIN_LEVEL and GameScene:spawnEnemy, which filters
@@ -21,6 +35,9 @@ Enemy.minLevel = Config.ENEMY_MIN_LEVEL
 -- should set their own.
 Enemy.displayName = "Enemy"
 
+---@param x number
+---@param y number
+---@param heading? number
 function Enemy:init(x, y, heading)
 	Enemy.super.init(self, x, y, heading)
 	self.radius = Config.ENEMY_RADIUS
@@ -52,6 +69,7 @@ end
 -- as self.speed rises toward self.moveSpeed * self.turnRateSpeedMultiplier
 -- (see the Config comment on ENEMY_TURN_RATE_SPEED_MULTIPLIER for why that
 -- reference speed isn't just moveSpeed directly).
+---@return number
 function Enemy:currentTurnRate()
 	local maxSpeed = self.moveSpeed * self.turnRateSpeedMultiplier
 	local speedRatio = maxSpeed > 0 and (self.speed / maxSpeed) or 0
@@ -59,6 +77,10 @@ function Enemy:currentTurnRate()
 	return self.turnRateMax - (self.turnRateMax - self.turnRateMin) * speedRatio
 end
 
+---@param targetX number
+---@param targetY number
+---@param windDirection? number
+---@param windSpeed? number
 function Enemy:update(targetX, targetY, windDirection, windSpeed)
 	local dt = Config.DT
 	local want = Utils.angleTo(self.x, self.y, targetX, targetY)
@@ -91,6 +113,9 @@ end
 -- the countdown runs out, it's relocated to the opposite side of the player
 -- at the same distance (a point reflection through the player), landing it
 -- back in play instead of trailing off into the distance.
+---@param shipX number
+---@param shipY number
+---@param dt number
 function Enemy:updateLeash(shipX, shipY, dt)
 	if Utils.dist(self.x, self.y, shipX, shipY) <= Config.ENEMY_MAX_DISTANCE then
 		self.teleportWarning = nil
@@ -112,6 +137,8 @@ end
 
 -- Bakes the white bow "eye" dot into the cached body image alongside the
 -- hull -- see Ship:drawBodyLocal/buildBodyImage.
+---@param cx number
+---@param cy number
 function Enemy:drawBodyLocal(cx, cy)
 	Enemy.super.drawBodyLocal(self, cx, cy)
 	gfx.setColor(gfx.kColorWhite)

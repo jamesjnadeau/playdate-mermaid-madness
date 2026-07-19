@@ -9,7 +9,8 @@ import "scripts/ConfigEnemy"
 import "scripts/Utils"
 import "scripts/Enemy"
 
-class("EnemySwordfish").extends(Enemy)
+---@class EnemySwordfish : Enemy
+EnemySwordfish = class("EnemySwordfish").extends(Enemy) or EnemySwordfish
 
 -- Unlocked starting this level (see Config.ENEMY_SWORDFISH_MIN_LEVEL /
 -- Enemy.minLevel / GameScene:spawnEnemy).
@@ -18,6 +19,9 @@ EnemySwordfish.minLevel = Config.ENEMY_SWORDFISH_MIN_LEVEL
 -- See Enemy.displayName.
 EnemySwordfish.displayName = "Swordfish"
 
+---@param x number
+---@param y number
+---@param heading? number
 function EnemySwordfish:init(x, y, heading)
 	EnemySwordfish.super.init(self, x, y, heading)
 

@@ -7,8 +7,18 @@ import "scripts/Ship"
 
 local gfx <const> = playdate.graphics
 
-class("Player").extends(Ship)
+---@class Player : Ship
+---@field invuln number seconds of remaining hit-invulnerability, see Player:hit
+---@field sailTrim number 0 (trimmed in) - 1 (fully out), see Player:adjustSailTrim
+---@field windDirection number last wind direction passed to Player:update
+---@field sailAngle number animated world-space boom angle, see Player:updateSailAngle
+---@field sailAngularVelocity number deg/s, see Player:updateSailAngle
+---@field wakePort table ParticleCircle
+---@field wakeStarboard table ParticleCircle
+Player = class("Player").extends(Ship) or Player
 
+---@param x number
+---@param y number
 function Player:init(x, y)
 	Player.super.init(self, x, y, -90) -- start pointing "north"
 	self.speed = 0
@@ -39,6 +49,7 @@ function Player:init(x, y)
 end
 
 -- takes player input and steers the boat
+---@param crankChange number
 function Player:steer(crankChange)
 	self.heading = Utils.wrapDeg(self.heading + crankChange * Config.SHIP_TURN_SCALE)
 end
@@ -47,6 +58,7 @@ end
 -- Config.SAIL_TRIM_RATE), positive = let out (more slack), negative = haul
 -- in. This only ever changes how far the boom is ALLOWED to swing -- see
 -- sailTargetAngle() for where it ends up settling.
+---@param delta number
 function Player:adjustSailTrim(delta)
 	self.sailTrim = Utils.clamp(self.sailTrim + delta, 0, 1)
 end
@@ -62,6 +74,7 @@ end
 -- trimming in actually move the sail. With enough slack (trim let most of
 -- the way out) that resting angle lands on the wind direction itself, i.e.
 -- the sail flops to lie parallel with the wind.
+---@return number
 function Player:sailTargetAngle()
 	local aft = Utils.wrapDeg(self.heading + 180)
 	local freeOffset = Utils.clamp(Utils.angleDiff(aft, self.windDirection),
@@ -78,6 +91,7 @@ end
 -- bleeds off angular velocity each second so the swing settles instead of
 -- oscillating forever. This is what makes a slack sail visibly flop over to
 -- the wind rather than teleporting there.
+---@param dt number
 function Player:updateSailAngle(dt)
 	local target = self:sailTargetAngle()
 	local diff = Utils.angleDiff(self.sailAngle, target)
@@ -89,11 +103,16 @@ end
 -- How much of the wind's push the sail catches: zero when the sail lies
 -- parallel to the wind (luffing, no surface presented to catch it), peaking
 -- as it swings broadside (perpendicular) to the wind.
+---@param sailAngle number
+---@param windDirection number
+---@return number
 local function sailPower(sailAngle, windDirection)
 	local angleToWind = Utils.angleDiff(sailAngle, windDirection)
 	return math.abs(math.sin(Utils.deg2rad(angleToWind))) * Config.SHIP_WIND_POWER_MULTIPLIER
 end
 
+---@param windDirection number
+---@param windSpeed number
 function Player:update(windDirection, windSpeed)
 	local dt = Config.DT
 	if self.invuln > 0 then self.invuln = self.invuln - dt end
@@ -138,6 +157,8 @@ function Player:drawWake()
 	self.wakeStarboard:update()
 end
 
+---@param damage number
+---@return boolean applied false if already invulnerable
 function Player:hit(damage)
 	if self.invuln > 0 then return false end
 	Player.super.hit(self, damage)
@@ -147,6 +168,8 @@ end
 
 -- Bakes the small bow dot into the cached body image alongside the hull --
 -- see Ship:drawBodyLocal/buildBodyImage.
+---@param cx number
+---@param cy number
 function Player:drawBodyLocal(cx, cy)
 	Player.super.drawBodyLocal(self, cx, cy)
 	gfx.setColor(self.outlineColor)

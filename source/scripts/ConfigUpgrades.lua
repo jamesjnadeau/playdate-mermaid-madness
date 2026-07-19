@@ -13,6 +13,18 @@
 -- the same upgrade repeatedly across a run can't push a stat past a sane
 -- bound. `format` renders a value for the before/after display shown by
 -- UpgradeSelectScene once an upgrade is chosen.
+---@class Config.Upgrade
+---@field id string
+---@field title string
+---@field description string
+---@field configKey string name of the Config field this upgrade modifies
+---@field multiplier? number new = old * multiplier (mutually exclusive with delta)
+---@field delta? number new = old + delta (mutually exclusive with multiplier)
+---@field minValue? number clamps the result
+---@field maxValue? number clamps the result
+---@field format fun(v: number): string
+
+---@type Config.Upgrade[]
 Config.UPGRADES = {
 	{
 		id = "ship_accel",
@@ -55,6 +67,9 @@ Config.UPGRADES = {
 -- TRIDENT_CHARGE_RATE, TRIDENT_DAMAGE) are all read fresh from Config every
 -- frame/use elsewhere in the game, so mutating them here takes effect
 -- immediately -- no Ship/Player instance state needs to be touched.
+---@param upgrade Config.Upgrade
+---@return number old
+---@return number new
 function Config.applyUpgrade(upgrade)
 	local old = Config[upgrade.configKey]
 	local new = old

@@ -6,8 +6,10 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-TitleScene = {}
-class("TitleScene").extends(NobleScene)
+---@class TitleScene : NobleScene
+---@field t number seconds elapsed, drives the blinking "Ⓐ to select" prompt
+---@field selected integer index into MENU_ITEMS
+TitleScene = class("TitleScene").extends(NobleScene) or TitleScene
 
 local scene = nil
 
@@ -20,6 +22,9 @@ local MENU_ITEMS = { "Play", "Test Enemies", "Instructions", "Settings" }
 -- Rebuilt every frame from :update() -- the blinking prompt needs to redraw
 -- regardless of whether the selection changed, and the tree is tiny enough
 -- that rebuilding it outright is simpler than diffing what changed.
+---@param selected integer
+---@param showPrompt boolean
+---@return table playout tree
 local function buildTree(selected, showPrompt)
 	local menuChildren = {}
 	for i, label in ipairs(MENU_ITEMS) do
@@ -47,6 +52,7 @@ local function buildTree(selected, showPrompt)
 	return playout.tree.new(root)
 end
 
+---@param ... any
 function TitleScene:init(...)
 	TitleScene.super.init(self, ...)
 	self.backgroundColor = gfx.kColorWhite

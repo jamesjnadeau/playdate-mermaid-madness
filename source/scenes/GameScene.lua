@@ -16,14 +16,45 @@ import "scripts/Tridentball"
 
 local gfx <const> = playdate.graphics
 
-GameScene = {}
-class("GameScene").extends(NobleScene)
+-- Never instantiated directly (see header); self.level below is only ever
+-- set by the GameSceneMain subclass, hence optional here.
+---@class GameScene : NobleScene
+---@field ship Player
+---@field enemies Enemy[]
+---@field tridentballs Tridentball[]
+---@field explosions table[] each { sys: table, age: number, maxAge: number }, see Ship:explode
+---@field elapsed number
+---@field score number
+---@field gameOver boolean
+---@field level? number set by GameSceneMain; nil elsewhere, treated as 1
+---@field windSpeedChangeRateMin number
+---@field windSpeedChangeRateMax number
+---@field windChangeIntervalMin number
+---@field windChangeIntervalMax number
+---@field windDirection number
+---@field windDirectionTarget number
+---@field windDirectionChangeRate number
+---@field windSpeed number
+---@field windSpeedTarget number
+---@field windSpeedChangeRate number
+---@field windChangeIntervalDuration number
+---@field windChangeTimer number
+---@field windEaseTimer number
+---@field windEaseDuration number
+---@field windSettled boolean
+---@field trimInput number -1 / 0 / 1
+---@field chargingSide? string "port" | "starboard"
+---@field charge number 0-1
+---@field target? Enemy
+---@field enemyTypes table[] class-level: Enemy/EnemySwordfish/EnemyKraken class tables eligible for random spawning
+GameScene = class("GameScene").extends(NobleScene) or GameScene
 
 -- File-local handle to the live scene so the (class-level) inputHandler
 -- callbacks -- in this class and in subclasses -- can talk to the current
 -- instance. GameScene.current() is the accessor subclasses should use.
 local scene = nil
 
+---@return GameScene?
 function GameScene.current()
 	return scene
 end
@@ -48,6 +79,7 @@ end
 -- Build all game state in init() (runs before the scene's first update()).
 -- Noble may call update() during the tail of a scene transition, before
 -- start() fires, so nothing here may be left until start().
+---@param sceneProperties? table
 function GameScene:init(sceneProperties)
 	GameScene.super.init(self, sceneProperties)
 	self.backgroundColor = gfx.kColorWhite
@@ -70,6 +102,7 @@ end
 -- Generic state every variant needs. Subclasses that track anything extra
 -- (level progress, spawn timers, ...) should override this, call
 -- GameScene.super.resetGame(self, sceneProperties) first, then add their own.
+---@param sceneProperties? table
 function GameScene:resetGame(sceneProperties)
 	sceneProperties = sceneProperties or {}
 	clearAllParticles()
@@ -116,6 +149,7 @@ end
 -- speedChangeRateMax, changeIntervalMin, changeIntervalMax}. Plain Config
 -- defaults here; GameSceneMain overrides this to scale both with level, the
 -- same way it scales levelTarget off Config.LEVEL_ENEMY_STEP.
+---@return { speedChangeRateMin: number, speedChangeRateMax: number, changeIntervalMin: number, changeIntervalMax: number }
 function GameScene:windTuning()
 	return {
 		speedChangeRateMin = Config.WIND_SPEED_CHANGE_RATE_MIN,
@@ -134,6 +168,8 @@ end
 -- inheritance the way methods do) and adds its own A/B bindings on top.
 -- `getScene` should return the currently-active instance -- pass
 -- GameScene.current.
+---@param getScene fun(): GameScene?
+---@return table inputHandler
 function GameScene.buildSharedInputHandler(getScene)
 	return {
 		-- Crank steers the helm.
@@ -183,6 +219,7 @@ end
 -- Trident: charging + auto-target
 -- ---------------------------------------------------------------------------
 
+---@param side string "port" | "starboard"
 function GameScene:beginCharge(side)
 	self.chargingSide = side
 	self.charge = 0
@@ -190,6 +227,8 @@ function GameScene:beginCharge(side)
 end
 
 -- Choose the nearest enemy on the given side, within targeting range.
+---@param side string "port" | "starboard"
+---@return Enemy?
 function GameScene:pickTarget(side)
 	local ship = self.ship
 	local fx, fy = Utils.heading(ship.heading)
@@ -209,6 +248,7 @@ function GameScene:pickTarget(side)
 	return best
 end
 
+---@param side string "port" | "starboard"
 function GameScene:releaseCharge(side)
 	if self.chargingSide ~= side then return end
 	if not self.gameOver then
@@ -238,6 +278,7 @@ end
 
 -- Degrees of random aim error at the current charge: full spread at 0 charge,
 -- narrowing to (1 - TRIDENT_MAX_ACCURACY) worth of spread once fully charged.
+---@return number
 function GameScene:currentAimSpread()
 	local accuracy = Config.TRIDENT_MAX_ACCURACY * self.charge
 	return Config.TRIDENT_MAX_SPREAD * (1 - accuracy)
@@ -263,6 +304,8 @@ GameScene.enemyTypes = { Enemy, EnemySwordfish, EnemyKraken }
 -- it actually spawned one (false if already at MAX_ENEMIES). Subclasses that
 -- gate spawning further (e.g. a per-level cap) should override this, check
 -- their own condition, then delegate to GameScene.super.spawnEnemy(self).
+---@param forcedType? table one of GameScene.enemyTypes
+---@return boolean spawned
 function GameScene:spawnEnemy(forcedType)
 	if #self.enemies >= Config.MAX_ENEMIES then return false end
 	local ship = self.ship
@@ -291,8 +334,10 @@ end
 -- Hook for automatic spawning; called once per tick. The base scene never
 -- spawns on its own (GameSceneTest relies on this); GameSceneMain overrides
 -- it to spawn on a timer.
+---@param dt number
 function GameScene:updateSpawning(dt) end
 
+---@param ship Ship
 function GameScene:addExplosion(ship)
 	self.explosions[#self.explosions + 1] = ship:explode(self.windDirection)
 end
@@ -443,6 +488,8 @@ end
 
 -- The world is infinite and player-centered: the camera always keeps the
 -- ship dead-center on screen rather than clamping to any world bound.
+---@return integer camX
+---@return integer camY
 function GameScene:cameraOrigin()
 	local camX = self.ship.x - Config.SCREEN_W / 2
 	local camY = self.ship.y - Config.SCREEN_H / 2
@@ -490,6 +537,10 @@ end
 -- multiples of WATER_GRID / WATER_GRID/2, and a plain weighted sum of those
 -- collapses to the same residue for every wavelet once the range divides
 -- the grid spacing -- this scrambles the bits first so it doesn't.
+---@param a integer
+---@param b integer
+---@param c integer
+---@return integer
 local function waterHash(a, b, c)
 	local h = a * 374761393 + b * 668265263 + c * 1136930381
 	h = (h ~ (h >> 13)) * 1274126177
@@ -497,6 +548,8 @@ local function waterHash(a, b, c)
 	return h
 end
 
+---@param camX integer
+---@param camY integer
 function GameScene:drawWater(camX, camY)
 	local g = Config.WATER_GRID
 	local startX = math.floor(camX / g) * g
@@ -529,6 +582,15 @@ end
 -- always gets enough points to read as a curve instead of a jagged zigzag.
 -- Config.WATER_WAVELET_SPAWN_CHANCE rolls (with the same stable hash)
 -- whether this slot draws anything at all.
+---@param cx number
+---@param cy number
+---@param px number perpendicular-to-wind axis unit vector, x
+---@param py number perpendicular-to-wind axis unit vector, y
+---@param wx number wind-heading unit vector, x
+---@param wy number wind-heading unit vector, y
+---@param ix integer
+---@param iy integer
+---@param variant integer
 function GameScene:drawWavelet(cx, cy, px, py, wx, wy, ix, iy, variant)
 	local spawnRoll = (waterHash(ix, iy, variant + 3000) % 10000) / 10000
 	if spawnRoll >= Config.WATER_WAVELET_SPAWN_CHANCE then return end
@@ -557,6 +619,8 @@ function GameScene:drawWavelet(cx, cy, px, py, wx, wy, ix, iy, variant)
 	end
 end
 
+---@param camX integer
+---@param camY integer
 function GameScene:drawTargetingLine(camX, camY)
 	if not self.chargingSide then return end
 	if not self.target then
@@ -579,7 +643,9 @@ end
 
 -- Lazily-built image for the "nothing in range" indicator; text images are
 -- cheap to cache since the string never changes.
+---@type _Image?
 local noTargetMarkImage = nil
+---@return _Image
 local function getNoTargetMarkImage()
 	if not noTargetMarkImage then
 		noTargetMarkImage = gfx.imageWithText("?", 40, 40)
@@ -589,14 +655,18 @@ end
 
 -- Lazily-built heart glyph images, cached for the same reason as above and
 -- so drawHUD can scale them (drawText can't be scaled, images can).
+---@type _Image?
 local fullHeartImage = nil
+---@type _Image?
 local emptyHeartImage = nil
+---@return _Image
 local function getFullHeartImage()
 	if not fullHeartImage then
 		fullHeartImage = gfx.imageWithText("❤️", 20, 20)
 	end
 	return fullHeartImage
 end
+---@return _Image
 local function getEmptyHeartImage()
 	if not emptyHeartImage then
 		emptyHeartImage = gfx.imageWithText("🤍", 20, 20)
@@ -607,6 +677,9 @@ end
 -- Shown on whichever side the player is charging when no enemy is in range
 -- on that side, at Config.NO_TARGET_MARK_OFFSET from the ship and scaled to
 -- Config.NO_TARGET_MARK_SIZE.
+---@param camX integer
+---@param camY integer
+---@param side string "port" | "starboard"
 function GameScene:drawNoTargetMark(camX, camY, side)
 	local ship = self.ship
 	local perp = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
@@ -626,6 +699,10 @@ end
 -- Two short lines near the ship show live aim spread: wide apart while
 -- undercharged, converging onto the dotted target line as charge (and thus
 -- accuracy) builds toward TRIDENT_MAX_ACCURACY.
+---@param sx number
+---@param sy number
+---@param tx number
+---@param ty number
 function GameScene:drawAimLines(sx, sy, tx, ty)
 	local dir = Utils.angleTo(sx, sy, tx, ty)
 	local spread = self:currentAimSpread()
@@ -642,6 +719,8 @@ end
 -- badge instead of a stack of overlapping ones. Each group also surfaces the
 -- most urgent teleport countdown among its members (see Enemy:updateLeash),
 -- so the player gets advance warning before an enemy relocates.
+---@param camX integer
+---@param camY integer
 function GameScene:drawOffscreenArrows(camX, camY)
 	local margin = Config.OFFSCREEN_INDICATOR_MARGIN
 	local groupWindow = Config.OFFSCREEN_INDICATOR_GROUP_ANGLE
@@ -726,6 +805,10 @@ function GameScene:drawOffscreenArrows(camX, camY)
 	end
 end
 
+---@param px number
+---@param py number
+---@param angleDeg number
+---@param size number
 function GameScene:drawArrow(px, py, angleDeg, size)
 	local hx, hy = Utils.heading(angleDeg)
 	-- perpendicular
@@ -802,6 +885,7 @@ end
 
 -- What to tell the player to do once sunk; each mode's A/B bindings mean
 -- something different, so this can't be one fixed string.
+---@return string
 function GameScene:gameOverPrompt()
 	return "Ⓐ to set sail again"
 end

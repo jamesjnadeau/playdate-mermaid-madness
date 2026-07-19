@@ -12,6 +12,50 @@ This does *not* apply to `tests/run.sh` (see the `tests/` section below) —
 it's a plain `lua5.4` script with no SDK/Simulator involved, so running it to
 check pure-logic changes is expected, not just a direct-request exception.
 
+## Type annotations (LuaCATS)
+
+`source/scripts/*.lua` and `source/scenes/*.lua` (not `source/libraries/` —
+that's vendored third-party code) carry
+[LuaCATS](https://luals.github.io/wiki/annotations/) doc comments so
+lua-language-server can type-check and autocomplete against the Playdate SDK.
+This is editor-only tooling — plain comments, no effect on `pdc`/the compiled
+`.pdx` — so it needs no build/CI wiring, unlike `tests/`.
+
+- **Setup**: run `tools/fetch-luacats.sh` to vendor
+  [notpeter/playdate-luacats](https://github.com/notpeter/playdate-luacats)
+  (SDK type stubs) into `vendor/playdate-luacats/` (gitignored — editor
+  tooling only, not a build/test dependency). `.luarc.json` at the repo root
+  already points `workspace.library` at it; point your editor's Lua
+  extension (e.g. the "Lua" extension by sumneko/LLS-Addons on VSCode) at
+  this project and it picks the config up automatically.
+- **Class pattern**: the Playdate SDK's `class("X").extends(Parent)` creates
+  the global `X` as a side effect but returns `nil`, which LuaCATS can't see
+  through. Every class in this repo follows the workaround from
+  [Franchovy/Playdate-Guides](https://github.com/Franchovy/Playdate-Guides)'s
+  `Type-checking-basics` guide:
+  ```lua
+  ---@class Enemy : Ship
+  ---@field moveSpeed number
+  Enemy = class("Enemy").extends(Ship) or Enemy
+  ```
+  The `or Enemy` is a no-op at runtime (`class()` already assigned the
+  global; `extends()` returns `nil`, so the `or` falls through to the
+  existing value) but gives LuaCATS the direct assignment it needs to attach
+  the `---@class` type. Follow this pattern for any new class, including
+  ones scaffolded by `tools/new-enemy.sh` (see below) — it doesn't add
+  annotations for you.
+- Fields assigned in `:init()` (or a table constructor) are inferred
+  automatically from that assignment — don't re-declare them with `---@field`.
+  Reserve `---@field` for fields a subclass is expected to set (e.g. `Ship`'s
+  `length`/`hull`/`color`, filled in by `Player`/`Enemy`, not `Ship:init`
+  itself) or fields set outside `:init()` (lazily-built caches like
+  `Ship.bodyImage`, class-level statics like `Enemy.minLevel`).
+- `Config.lua`/`ConfigEnemy.lua` are almost entirely flat `Config.FOO = value`
+  assignments, which LuaCATS already infers without help — no `---@field`
+  needed there. `ConfigUpgrades.lua` is the exception: its `Config.UPGRADES`
+  entries have a real shape, so it defines `---@class Config.Upgrade` and
+  types `Config.applyUpgrade` against it.
+
 ## Playdate system menu: 3-item cap
 
 `playdate.getSystemMenu()` accepts at most **3 custom items total**, across
@@ -125,6 +169,23 @@ so a stale diagram and a stale test tend to go stale together — update both.
   pulls `luaunit` into `tests/vendor/` if it isn't already present. Kept
   separate so a test-only dependency never ends up under `source/` (`pdc`
   would compile it into the `.pdx`). See the `tests/` section above.
+- **`fetch-luacats.sh`** — same idea again, but for editor type checking:
+  pulls `playdate-luacats` into `vendor/playdate-luacats/` (gitignored) if
+  it isn't already present. Not wired into CI or `build.sh`/`tests/run.sh` —
+  it's pure editor tooling, see the "Type annotations (LuaCATS)" section
+  above. Honors `LUACATS_REF` to pin a branch/tag/commit instead of `main`.
+- **`parse-check.sh`** — syntax-checks `source/scripts/`, `source/scenes/`,
+  and `main.lua` with `luac5.4 -p` (compile-and-discard, no execution). Warns
+  and exits 0 if `luac5.4` isn't on `PATH` rather than failing. Deliberately
+  skips `source/libraries/`: those vendored files use `pdc`-only syntax (the
+  `+=` family) plain `luac5.4` can't parse — see the "Type annotations
+  (LuaCATS)" section above for the same distinction. Used both locally and by
+  `.github/workflows/build.yml`'s `build` job (after `fetch-deps.sh`, its own
+  "Install Lua" step providing `luac5.4` since the `build` job doesn't
+  otherwise need lua5.4) as a fast fail-before-the-SDK-install gate.
+  `tests/run.sh` already exercises `source/scenes/*.lua` for real (under the
+  `mock_noble.lua` stand-in) as a stronger check than a bare parse, so this
+  isn't a substitute for that, just a cheaper first check.
 - **`new-enemy.sh <Name>`** — scaffolds a new `Enemy` subclass. Given a
   PascalCase or camelCase name (e.g. `Piranha`, `SeaSerpent`), it generates
   `source/scripts/Enemy<Name>.lua` (modeled on `EnemySwordfish.lua`, with

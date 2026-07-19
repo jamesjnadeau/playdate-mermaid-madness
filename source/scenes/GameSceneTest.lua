@@ -8,7 +8,9 @@ import "scenes/GameScene"
 
 local gfx <const> = playdate.graphics
 
-class("GameSceneTest").extends(GameScene)
+---@class GameSceneTest : GameScene
+---@field selectedEnemyType? table class-level: one of GameScene.enemyTypes, see below
+GameSceneTest = class("GameSceneTest").extends(GameScene) or GameSceneTest
 
 -- Which enemy type Ⓐ spawns; nil means "pick randomly", matching the
 -- original behavior. Set by EnemySelectScene, reached via the "Select Enemy"
@@ -46,6 +48,10 @@ end
 -- wind bars read as little waves rather than flat progress bars (matching
 -- the water's look -- see GameScene:drawWavelet). `dir` is +1/-1 and picks
 -- which way the crest crawls, so the two bars visibly move opposite ways.
+---@param width number
+---@param y number
+---@param phase number
+---@param dir number +1 | -1
 local function drawWaveBar(width, y, phase, dir)
 	if width <= 0 then return end
 	local amplitude = Config.WIND_BAR_WAVE_AMPLITUDE
@@ -83,6 +89,7 @@ function GameSceneTest:drawHUD()
 	end
 end
 
+---@return string
 function GameSceneTest:gameOverPrompt()
 	return "Ⓑ to return to menu"
 end

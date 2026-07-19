@@ -5,9 +5,10 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-InstructionsScene = {}
-class("InstructionsScene").extends(NobleScene)
+---@class InstructionsScene : NobleScene
+InstructionsScene = class("InstructionsScene").extends(NobleScene) or InstructionsScene
 
+---@param ... any
 function InstructionsScene:init(...)
 	InstructionsScene.super.init(self, ...)
 	self.backgroundColor = gfx.kColorWhite

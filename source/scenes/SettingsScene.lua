@@ -11,8 +11,11 @@ import "scripts/Config"
 
 local gfx <const> = playdate.graphics
 
-SettingsScene = {}
-class("SettingsScene").extends(NobleScene)
+---@class SettingsScene : NobleScene
+---@field selected integer index into SETTINGS
+---@field tree table playout tree, see rebuild()
+---@field img _Image drawn image of the playout tree, see rebuild()
+SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 
 local scene = nil
 
@@ -28,6 +31,8 @@ local SETTINGS = {
 -- than mutated in place) whenever the selection or a setting changes -- the
 -- list is tiny so this stays cheap and keeps the highlight/checkbox logic in
 -- one place.
+---@param selectedIndex integer
+---@return table playout tree
 local function buildTree(selectedIndex)
 	local children = {
 		playout.text.new("Settings"),
@@ -65,6 +70,7 @@ local function buildTree(selectedIndex)
 	return playout.tree.new(root)
 end
 
+---@param ... any
 function SettingsScene:init(...)
 	SettingsScene.super.init(self, ...)
 	self.backgroundColor = gfx.kColorWhite
@@ -91,6 +97,7 @@ function SettingsScene:rebuild()
 	self.img = self.tree:draw()
 end
 
+---@param delta integer
 local function moveSelection(delta)
 	if not scene then return end
 	local count = #SETTINGS

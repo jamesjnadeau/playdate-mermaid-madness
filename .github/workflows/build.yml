@@ -39,6 +39,12 @@ jobs:
       - name: Fetch engine + libraries
         run: bash tools/fetch-deps.sh
 
+      - name: Install Lua
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+
+      - name: Parse-check source
+        run: bash tools/parse-check.sh
+
       - name: Install Playdate SDK
         id: playdate
         uses: pd-rs/get-playdate-sdk@0.4

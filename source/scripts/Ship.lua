@@ -6,13 +6,34 @@ import "scripts/Utils"
 
 local gfx <const> = playdate.graphics
 
-class("Ship").extends()
+-- Base class for Player/Enemy; never instantiated directly, so fields below
+-- that aren't set in Ship:init() (length, speed, health, hull, color,
+-- outlineColor, bodyImage) are the contract subclasses' own init()s fill in.
+---@class Ship : _Object
+---@field x number
+---@field y number
+---@field heading number world-space degrees, 0 = +x (east)
+---@field alive boolean
+---@field length number half-length of the hull, used by sternPosition/beamPosition
+---@field speed number px/s, see Ship:updateSpeed
+---@field health number
+---@field hull? number[] flat {x1,y1,x2,y2,...} polygon in local space, nil for hull-less ships like EnemyKraken
+---@field color integer a playdate.graphics kColor*
+---@field outlineColor? integer a playdate.graphics kColor*
+---@field bodyImage? _Image lazily baked by Ship:buildBodyImage
+---@field explosionConfig table see Config.EXPLOSION
+Ship = class("Ship").extends() or Ship
 
 -- Default explosion look for every ship; subclasses can overwrite the whole
 -- table (Enemy.explosionConfig = {...}) or set self.explosionConfig in init()
 -- to override just this instance.
 Ship.explosionConfig = Config.EXPLOSION
 
+---@param pts number[]
+---@param deg number
+---@param ox number
+---@param oy number
+---@return number[]
 local function rotatePts(pts, deg, ox, oy)
 	local r = deg * math.pi / 180
 	local c, s = math.cos(r), math.sin(r)
@@ -25,6 +46,7 @@ local function rotatePts(pts, deg, ox, oy)
 	return out
 end
 
+---@param p number[]
 local function fillFan(p)
 	local n = #p // 2
 	for i = 2, n - 1 do
@@ -32,6 +54,7 @@ local function fillFan(p)
 	end
 end
 
+---@param p number[]
 local function strokeLoop(p)
 	local n = #p // 2
 	for i = 1, n do
@@ -40,13 +63,18 @@ local function strokeLoop(p)
 	end
 end
 
+---@param x number
+---@param y number
+---@param heading? number
 function Ship:init(x, y, heading)
 	self.x = x
-	self.y = y 
+	self.y = y
 	self.heading = heading or 0
 	self.alive = true
 end
 
+---@return number x
+---@return number y
 function Ship:sternPosition()
 	local hx, hy = Utils.heading(self.heading)
 	return self.x - hx * self.length, self.y - hy * self.length
@@ -57,6 +85,9 @@ end
 -- Player:init/Enemy:init. An optional sideOffset shifts the point
 -- perpendicular to the heading (positive = to port), landing it on the
 -- port/starboard edge of the hull instead of the centerline.
+---@param sideOffset? number
+---@return number x
+---@return number y
 function Ship:beamPosition(sideOffset)
 	sideOffset = sideOffset or 0
 	local hx, hy = Utils.heading(self.heading)
@@ -75,6 +106,9 @@ end
 -- Enemy:update). Any speed above Config.SHIP_MAX_SPEED (e.g. from a wind
 -- boost) also bleeds off extra drag at Config.SHIP_OVERSPEED_FRICTION per
 -- pixel/second over the max.
+---@param targetSpeed number
+---@param accel number
+---@param dt number
 function Ship:updateSpeed(targetSpeed, accel, dt)
 	if self.speed < targetSpeed then
 		self.speed = math.min(targetSpeed, self.speed + accel * dt)
@@ -88,6 +122,7 @@ function Ship:updateSpeed(targetSpeed, accel, dt)
 	end
 end
 
+---@param damage number
 function Ship:hit(damage)
 	self.health = self.health - damage
 	if self.health <= 0 then
@@ -95,6 +130,8 @@ function Ship:hit(damage)
 	end
 end
 
+---@return number x
+---@return number y
 function Ship:explosionOrigin()
 	return self.x, self.y
 end
@@ -103,6 +140,8 @@ end
 -- scene tracks to update/prune it: { sys, age, maxAge }. windDirection, if
 -- given, bends the spread arc toward the way the wind is blowing (debris and
 -- smoke drift downwind) -- see Config.EXPLOSION_WIND_INFLUENCE.
+---@param windDirection? number
+---@return table explosion { sys: table, age: number, maxAge: number }
 function Ship:explode(windDirection)
 	local cfg = self.explosionConfig
 	local x, y = self:explosionOrigin()
@@ -132,6 +171,7 @@ end
 -- Bounding radius (in local, unrotated space) of everything this ship draws
 -- into its cached body image -- see Ship:buildBodyImage. Subclasses that draw
 -- shapes further out than the hull (EnemyKraken's dots) should override this.
+---@return number
 function Ship:bodyRadius()
 	local r = 0
 	if self.hull then
@@ -148,6 +188,8 @@ end
 -- frame. Subclasses that add extra fixed parts (Enemy's eye dot, Player's bow
 -- dot) should call the super implementation first, then draw their own piece
 -- at the same local offsets used in their live-space draw code.
+---@param cx number
+---@param cy number
 function Ship:drawBodyLocal(cx, cy)
 	local p = rotatePts(self.hull, 0, cx, cy)
 	gfx.setColor(self.color)

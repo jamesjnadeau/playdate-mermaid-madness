@@ -6,8 +6,21 @@ import "scripts/Utils"
 
 local gfx <const> = playdate.graphics
 
-class("Tridentball").extends()
+---@class Tridentball : _Object
+---@field x number tip position -- also the leading point used for collision
+---@field y number
+---@field dir number heading in degrees
+---@field vx number px/s
+---@field vy number px/s
+---@field life number seconds remaining before it falls in the sea
+---@field radius number collision radius
+---@field dead boolean
+Tridentball = class("Tridentball").extends() or Tridentball
 
+---@param x number
+---@param y number
+---@param dirDeg number
+---@param speed number
 function Tridentball:init(x, y, dirDeg, speed)
 	Tridentball.super.init(self)
 	self.x = x

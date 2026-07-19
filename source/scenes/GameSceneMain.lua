@@ -10,8 +10,19 @@ import "scenes/GameScene"
 
 local gfx <const> = playdate.graphics
 
-class("GameSceneMain").extends(GameScene)
+---@class GameSceneMain : GameScene
+---@field level number set in resetGame; overrides GameScene's optional field
+---@field spawnTimer number seconds until the next automatic spawn
+---@field levelKills number kills toward clearing the current level
+---@field levelSpawned number enemies spawned so far this level
+---@field levelTarget number levelKills needed to clear the level
+---@field levelComplete boolean
+GameSceneMain = class("GameSceneMain").extends(GameScene) or GameSceneMain
 
+---@param a number
+---@param b number
+---@param t number
+---@return number
 local function lerp(a, b, t) return a + (b - a) * t end
 
 GameSceneMain.inputHandler = GameScene.buildSharedInputHandler(GameScene.current)
@@ -20,6 +31,7 @@ GameSceneMain.inputHandler.AButtonDown = function()
 	if s and s.gameOver then Noble.transition(GameSceneMain) end
 end
 
+---@param sceneProperties? table
 function GameSceneMain:resetGame(sceneProperties)
 	sceneProperties = sceneProperties or {}
 	-- Set before calling super: GameScene.resetGame calls self:windTuning(),
@@ -40,6 +52,8 @@ end
 -- LevelCompleteScene can call it
 -- directly to decide whether a level transition needs to route through
 -- WindShiftScene.
+---@param level number
+---@return integer
 function GameSceneMain.windStepForLevel(level)
 	return math.floor((level - 1) / Config.LEVEL_WIND_STEP_INTERVAL)
 end
@@ -48,6 +62,7 @@ end
 -- between changes) as levels climb, same idea as levelTarget above: scaled
 -- linearly off the wind step (see windStepForLevel above), tunable via
 -- Config.LEVEL_WIND_SPEED_CHANGE_RATE_STEP and Config.LEVEL_WIND_CHANGE_INTERVAL_STEP.
+---@return { speedChangeRateMin: number, speedChangeRateMax: number, changeIntervalMin: number, changeIntervalMax: number }
 function GameSceneMain:windTuning()
 	local step = GameSceneMain.windStepForLevel(self.level)
 	local intervalMin = math.max(Config.WIND_CHANGE_INTERVAL_FLOOR,
@@ -62,6 +77,7 @@ function GameSceneMain:windTuning()
 	}
 end
 
+---@return number
 function GameSceneMain:currentSpawnInterval()
 	local t = Utils.clamp(self.elapsed / Config.SPAWN_RAMP_SECONDS, 0, 1)
 	return lerp(Config.SPAWN_INTERVAL_START, Config.SPAWN_INTERVAL_FLOOR, t)
@@ -69,6 +85,7 @@ end
 
 -- Spawn on a shrinking interval, same as the base scene's manual spawnEnemy
 -- but capped so at most levelTarget enemies ever spawn this level.
+---@param dt number
 function GameSceneMain:updateSpawning(dt)
 	self.spawnTimer = self.spawnTimer - dt
 	if self.spawnTimer <= 0 then
@@ -77,6 +94,7 @@ function GameSceneMain:updateSpawning(dt)
 	end
 end
 
+---@return boolean spawned
 function GameSceneMain:spawnEnemy()
 	if self.levelSpawned >= self.levelTarget then return false end
 	if GameSceneMain.super.spawnEnemy(self) then
