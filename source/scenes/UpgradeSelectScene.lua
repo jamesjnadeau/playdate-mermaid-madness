@@ -40,13 +40,17 @@ UpgradeSelectScene = class("UpgradeSelectScene").extends(NobleScene) or UpgradeS
 local scene = nil
 
 -- Draws `count` distinct entries from Config.UPGRADES without replacement
--- (falls back to fewer if the pool is smaller than `count`).
+-- (falls back to fewer if the pool is smaller than `count`). Entries with an
+-- `available` predicate (e.g. "Rapid Autocannon" requiring the Autofire
+-- Cannon already be installed) are skipped unless it currently returns true.
 ---@param count integer
 ---@return Config.Upgrade[]
 local function pickUpgrades(count)
 	local pool = {}
-	for i, upgrade in ipairs(Config.UPGRADES) do
-		pool[i] = upgrade
+	for _, upgrade in ipairs(Config.UPGRADES) do
+		if upgrade.available == nil or upgrade.available() then
+			pool[#pool + 1] = upgrade
+		end
 	end
 	local picks = {}
 	for i = 1, math.min(count, #pool) do

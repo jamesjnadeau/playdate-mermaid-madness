@@ -143,10 +143,10 @@ Config.TRIDENT_SHAFT_LENGTH  = 8  -- length (px) of the trailing shaft line
 Config.TRIDENT_PRONG_LENGTH  = 4  -- length (px) of each forward prong, from the crossbar
 Config.TRIDENT_PRONG_SPREAD  = 3  -- half-width (px) of the crossbar / outer prong offset
 Config.TRIDENT_LINE_WIDTH    = 2  -- stroke thickness (px) of the trident glyph
-Config.TARGET_RANGE     = 200   -- max auto-target acquisition distance, default: 320
-Config.AIM_LINE_LENGTH  = 18    -- length (px) of the converging aim-indicator lines
+Config.TARGET_RANGE     = 160   -- max auto-target acquisition distance, default: 320
+Config.AIM_LINE_LENGTH  = 32    -- length (px) of the converging aim-indicator lines
 Config.AIM_LINE_WIDTH   = 2     -- stroke thickness (px) of the aim-indicator lines
-Config.NO_TARGET_MARK_SIZE   = 16 -- pixel height of the "?" shown when charging with nothing in range
+Config.NO_TARGET_MARK_SIZE   = 22 -- pixel height of the "?" shown when charging with nothing in range
 Config.NO_TARGET_MARK_OFFSET = 30 -- distance (px) from the ship's center to that mark
 
 ---------------------
@@ -157,9 +157,12 @@ Config.NO_TARGET_MARK_OFFSET = 30 -- distance (px) from the ship's center to tha
 -- no player input, unlike the manual port/starboard trident. See GameScene's
 -- cannonTimer tick and fireCannon.
 Config.AUTOFIRE_CANNON_UNLOCKED = 0     -- 0 = not installed, >0 = installed; set by the upgrade
-Config.AUTOFIRE_CANNON_DAMAGE   = 1     -- health removed from an enemy per cannon hit
+Config.AUTOFIRE_CANNON_DAMAGE   = 0.5     -- health removed from an enemy per cannon hit
 Config.AUTOFIRE_CANNON_DELAY    = 1.5   -- seconds between shots
-Config.AUTOFIRE_CANNON_RANGE    = Config.TARGET_RANGE / 2 -- max auto-target acquisition distance
+Config.AUTOFIRE_CANNON_RANGE    = Config.TARGET_RANGE / 3 -- max auto-target acquisition distance
+-- Seconds AUTOFIRE_CANNON_DELAY drops by per pick of the "Rapid Autocannon"
+-- upgrade (only offered once AUTOFIRE_CANNON_UNLOCKED -- see ConfigUpgrades.lua).
+Config.AUTOFIRE_CANNON_DELAY_STEP = 0.2
 
 -----------
 -- Sound --

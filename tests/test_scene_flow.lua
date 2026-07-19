@@ -373,8 +373,9 @@ end
 function TestSceneFlow:testGameSceneTrainingEnemySelectConfirmSetsForcedType()
 	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
 	local menuItems = playdate.getSystemMenu():getMenuItems()
-	lu.assertEquals(#menuItems, 1)
+	lu.assertEquals(#menuItems, 2)
 	lu.assertEquals(menuItems[1].name, "Select Enemy")
+	lu.assertEquals(menuItems[2].name, "Test Upgrade")
 
 	menuItems[1].callback() -- same as choosing it from the system menu
 	lu.assertEquals(currentClassName(), "EnemySelectScene")
@@ -402,6 +403,36 @@ function TestSceneFlow:testGameSceneTrainingEnemySelectCancelLeavesSelectionUnch
 
 	lu.assertEquals(currentClassName(), "GameSceneTraining")
 	lu.assertNil(GameSceneTraining.selectedEnemyType)
+end
+
+-- --- GameSceneTraining / UpgradeTestScene ---------------------------------
+
+function TestSceneFlow:testGameSceneTrainingUpgradeTestApplyAppliesAndReturns()
+	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
+	local menuItems = playdate.getSystemMenu():getMenuItems()
+	menuItems[2].callback() -- same as choosing "Test Upgrade" from the system menu
+	lu.assertEquals(currentClassName(), "UpgradeTestScene")
+	lu.assertEquals(Noble.currentScene().selected, 1)
+
+	-- Config.UPGRADES[1] is "Swift Rigging" (SHIP_ACCEL * 1.25) -- see
+	-- ConfigUpgrades.lua.
+	local before = Config.SHIP_ACCEL
+	Noble.Input.fire("AButtonDown")
+
+	lu.assertEquals(currentClassName(), "GameSceneTraining")
+	lu.assertEquals(Config.SHIP_ACCEL, before * 1.25)
+end
+
+function TestSceneFlow:testGameSceneTrainingUpgradeTestCancelAppliesNothing()
+	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
+	playdate.getSystemMenu():getMenuItems()[2].callback() -- -> UpgradeTestScene
+
+	Noble.Input.fire("downButtonDown")
+	local before = Config.SHIP_ACCEL
+	Noble.Input.fire("BButtonDown") -- cancel
+
+	lu.assertEquals(currentClassName(), "GameSceneTraining")
+	lu.assertEquals(Config.SHIP_ACCEL, before)
 end
 
 -- --- GameSceneMain / LevelCompleteScene -----------------------------------
@@ -451,6 +482,17 @@ function TestSceneFlow:testLevelCompleteConfirmTransitionsToUpgradeSelect()
 end
 
 -- --- UpgradeSelectScene / WindShiftScene ----------------------------------
+
+function TestSceneFlow:testUpgradeSelectExcludesUnavailableUpgrades()
+	-- Config.AUTOFIRE_CANNON_UNLOCKED defaults to 0 (setUp restores a full
+	-- snapshot each test), so "Rapid Autocannon" (available only once the
+	-- Autofire Cannon is installed) must never be drawn.
+	Noble.transition(UpgradeSelectScene, nil, nil, nil, { level = 2, completedLevel = 1, totalDefeated = 0 })
+	local scene = Noble.currentScene()
+	for _, upgrade in ipairs(scene.upgrades) do
+		lu.assertNotEquals(upgrade.id, "autofire_cannon_delay")
+	end
+end
 
 function TestSceneFlow:testUpgradeSelectWithoutWindStepGoesStraightToGameSceneMain()
 	-- windStepForLevel(2) == windStepForLevel(1) == 0: no escalation this level.

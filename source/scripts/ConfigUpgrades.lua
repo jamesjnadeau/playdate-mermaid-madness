@@ -23,6 +23,7 @@
 ---@field minValue? number clamps the result
 ---@field maxValue? number clamps the result
 ---@field format fun(v: number): string
+---@field available? fun(): boolean if present, only offered by UpgradeSelectScene's pickUpgrades when this returns true (e.g. a prerequisite upgrade already installed); omitted means always offered. UpgradeTestScene deliberately ignores this -- see its header comment.
 
 ---@type Config.Upgrade[]
 Config.UPGRADES = {
@@ -65,8 +66,18 @@ Config.UPGRADES = {
 		description = "Mounts a cannon that fires on its own at the nearest enemy in range.",
 		configKey = "AUTOFIRE_CANNON_UNLOCKED",
 		delta = 1,
-		maxValue = 1,
+		maxValue = 5,
 		format = function(v) return v > 0 and "Installed" or "Not installed" end,
+	},
+	{
+		id = "autofire_cannon_delay",
+		title = "Rapid Autocannon",
+		description = "Shortens the delay between autofire cannon shots. Requires the Autofire Cannon.",
+		configKey = "AUTOFIRE_CANNON_DELAY",
+		delta = -Config.AUTOFIRE_CANNON_DELAY_STEP,
+		minValue = 0.1,
+		available = function() return Config.AUTOFIRE_CANNON_UNLOCKED > 0 end,
+		format = function(v) return string.format("%.2f", v) .. " s" end,
 	},
 }
 

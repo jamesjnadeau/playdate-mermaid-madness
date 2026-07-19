@@ -29,6 +29,9 @@ flowchart TD
     GameTraining -->|"system menu: Select Enemy"| EnemySelect["EnemySelectScene"]
     EnemySelect -->|"A: confirm"| GameTraining
     EnemySelect -->|"B: cancel"| GameTraining
+    GameTraining -->|"system menu: Test Upgrade"| UpgradeTest["UpgradeTestScene"]
+    UpgradeTest -->|"A: apply"| GameTraining
+    UpgradeTest -->|"B: cancel"| GameTraining
 
     GameMain -->|"level target cleared"| LevelComplete["LevelCompleteScene"]
     GameMain -->|"game over, A: restart"| GameMain
@@ -141,12 +144,14 @@ and enemies defeated, then returns to `TitleScene`. Only reachable in a
 ## GameSceneTraining
 
 A sandbox for testing ship/wind/combat feel: no automatic spawning or level
-progression. Adds a "Select Enemy" item to the system menu while active (see
-the 3-item system-menu cap note in the repo's `CLAUDE.md` before adding
-another system-menu item anywhere).
+progression. Adds "Select Enemy" and "Test Upgrade" items to the system menu
+while active — the full 3-item cap alongside `main.lua`'s "Music" checkmark,
+no headroom left for a fourth (see the 3-item system-menu cap note in the
+repo's `CLAUDE.md` before adding another system-menu item anywhere).
 
 - **Reached from:** `TitleScene` ("Training"), `EnemySelectScene` (after
-  confirming or cancelling a pick).
+  confirming or cancelling a pick), `UpgradeTestScene` (after applying or
+  cancelling).
 - **Controls:** shared steer/trim/charge bindings (see `GameSceneMain` above);
   A spawns one enemy (`GameSceneTraining.selectedEnemyType`, or random if unset);
   B returns to `TitleScene`.
@@ -154,6 +159,7 @@ another system-menu item anywhere).
 - **Transitions out:**
   - B → `Noble.transition(TitleScene)`
   - System menu "Select Enemy" → `Noble.transition(EnemySelectScene)`
+  - System menu "Test Upgrade" → `Noble.transition(UpgradeTestScene)`
 - **Notable state:** `GameSceneTraining.selectedEnemyType` is a *class-level*
   field (not per-instance), so it survives this scene being torn down and
   recreated — that's how `EnemySelectScene`'s pick sticks across a
@@ -173,6 +179,25 @@ one.
   directly).
 - **Transitions out:** A or B → `Noble.transition(GameSceneTraining)` (A also
   sets `GameSceneTraining.selectedEnemyType` first).
+
+## UpgradeTestScene
+
+Reached only from `GameSceneTraining`'s system-menu item — the same pattern as
+`EnemySelectScene`, but for `Config.UPGRADES` instead of enemy types. Lists
+every entry in the pool (not a random draw of 3, unlike `UpgradeSelectScene`),
+so any upgrade can be applied on demand to feel out its effect in the
+sandbox. Unlike `UpgradeSelectScene`, applying goes straight back to
+`GameSceneTraining` with no before/after result screen — it's meant to be
+reopened repeatedly to stack several picks in a row.
+
+- **Reached from:** `GameSceneTraining` (system menu "Test Upgrade").
+- **Controls:** Up/Down move the highlight (wraps, always starts at the first
+  entry — there's no "current pick" to remember, unlike `EnemySelectScene`);
+  A applies the highlighted upgrade (via `Config.applyUpgrade`) and returns;
+  B cancels and returns without applying anything.
+- **sceneProperties read:** none.
+- **Transitions out:** A or B → `Noble.transition(GameSceneTraining)` (A also
+  calls `Config.applyUpgrade` first).
 
 ## InstructionsScene
 
@@ -302,7 +327,10 @@ without needing to know what it is — see `GameSceneMain.gameSceneClass`.
 ## UpgradeSelectScene
 
 Offers 3 randomly-drawn entries from `Config.UPGRADES`
-(`source/scripts/ConfigUpgrades.lua`), rendered with
+(`source/scripts/ConfigUpgrades.lua`) — entries with an `available` predicate
+(e.g. "Rapid Autocannon", which requires the Autofire Cannon upgrade already
+installed) are excluded from the draw pool until it returns true; see
+`pickUpgrades` — rendered with
 [playout](../libraries/playout.lua). Two phases: `"select"` (pick one) then
 `"result"` (before/after readout), each its own screen behind the same A
 button. Carries the level/wind-step/gameScene handoff the rest of the way —

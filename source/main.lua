@@ -36,6 +36,7 @@ import "scenes/GameSceneMain"
 import "scenes/GameSceneDemo"
 import "scenes/GameSceneTraining"
 import "scenes/EnemySelectScene"
+import "scenes/UpgradeTestScene"
 import "scenes/LevelCompleteScene"
 import "scenes/UpgradeSelectScene"
 import "scenes/WindShiftScene"
@@ -62,6 +63,7 @@ local sceneByName = {
 	GameDemo = GameSceneDemo,
 	GameTraining = GameSceneTraining,
 	EnemySelect = EnemySelectScene,
+	UpgradeTest = UpgradeTestScene,
 	LevelComplete = LevelCompleteScene,
 	UpgradeSelect = UpgradeSelectScene,
 	WindShift = WindShiftScene,

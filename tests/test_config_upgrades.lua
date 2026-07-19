@@ -14,11 +14,13 @@ TestConfigUpgrades = {}
 function TestConfigUpgrades:setUp()
 	self.savedShipAccel = Config.SHIP_ACCEL
 	self.savedTridentDamage = Config.TRIDENT_DAMAGE
+	self.savedAutofireCannonUnlocked = Config.AUTOFIRE_CANNON_UNLOCKED
 end
 
 function TestConfigUpgrades:tearDown()
 	Config.SHIP_ACCEL = self.savedShipAccel
 	Config.TRIDENT_DAMAGE = self.savedTridentDamage
+	Config.AUTOFIRE_CANNON_UNLOCKED = self.savedAutofireCannonUnlocked
 	Config.TEST_STAT = nil
 end
 
@@ -48,6 +50,20 @@ function TestConfigUpgrades:testMaxValueClamp()
 	local old, new = Config.applyUpgrade({ configKey = "TEST_STAT", delta = 100, maxValue = 20 })
 	lu.assertEquals(old, 10)
 	lu.assertEquals(new, 20)
+end
+
+function TestConfigUpgrades:testAutofireCannonDelayUpgradeRequiresCannonInstalled()
+	local upgrade = nil
+	for _, u in ipairs(Config.UPGRADES) do
+		if u.id == "autofire_cannon_delay" then upgrade = u end
+	end
+	lu.assertNotNil(upgrade)
+	lu.assertNotNil(upgrade.available)
+
+	Config.AUTOFIRE_CANNON_UNLOCKED = 0
+	lu.assertFalse(upgrade.available())
+	Config.AUTOFIRE_CANNON_UNLOCKED = 1
+	lu.assertTrue(upgrade.available())
 end
 
 function TestConfigUpgrades:testUpgradePoolEntriesAreWellFormed()
