@@ -4,10 +4,9 @@
 -- window): HUD toggles (Config.HUD_SHOW_*, moved here from the system menu
 -- so it stays free for scene-specific items -- see EnemySelectScene/
 -- GameSceneTraining's "Select Enemy"), Sound (pick a background song out of
--- source/assets/songs and set Config.MUSIC_VOLUME/MUSIC_VOLUME_MIN/
--- MUSIC_VOLUME_MAX, via MidiPlayer.selectSong -- the same function main.lua's
--- boot default and the system menu's "Music" checkmark use, so all three
--- stay in sync), and Tuning (a single
+-- source/assets/songs and set Config.MUSIC_VOLUME, via MusicPlayer.selectSong
+-- -- the same function main.lua's boot default and the system menu's
+-- "Music" checkmark use, so all three stay in sync), and Tuning (a single
 -- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
 -- longer reachable directly from the title screen, only through here).
 -- Built with the playout UI library, see libraries/playout.lua. Up/Down
@@ -17,7 +16,7 @@
 
 import "scripts/Config"
 import "scripts/Utils"
-import "scripts/MidiPlayer"
+import "scripts/MusicPlayer"
 
 local gfx <const> = playdate.graphics
 
@@ -40,27 +39,27 @@ SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 local scene = nil
 
 -- The song row cycles a virtual list: index 1 is always "no song", indices
--- 2.. map to MidiPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
--- filename) is the source of truth so the choice reads back correctly if
--- this scene is re-entered -- MidiPlayer.selectSong keeps it and actual
+-- 2.. map to MusicPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
+-- song name) is the source of truth so the choice reads back correctly if
+-- this scene is re-entered -- MusicPlayer.selectSong keeps it and actual
 -- playback in sync (also used by main.lua's boot default and the
 -- system-menu "Music" checkmark, so all three stay consistent).
 ---@return integer
 local function currentSongIndex()
 	if not Config.MUSIC_SONG then return 1 end
-	for i, name in ipairs(MidiPlayer.listSongs()) do
+	for i, name in ipairs(MusicPlayer.listSongs()) do
 		if name == Config.MUSIC_SONG then return i + 1 end
 	end
 	return 1
 end
 
--- Applies the song at virtual index `index` via MidiPlayer.selectSong (nil
+-- Applies the song at virtual index `index` via MusicPlayer.selectSong (nil
 -- for "no song", index 1). Playback isn't tied to this scene -- it keeps
 -- looping as background music after you leave Settings.
 ---@param index integer
 local function selectSong(index)
-	local songs = MidiPlayer.listSongs()
-	MidiPlayer.selectSong(index > 1 and songs[index - 1] or nil)
+	local songs = MusicPlayer.listSongs()
+	MusicPlayer.selectSong(index > 1 and songs[index - 1] or nil)
 end
 
 ---@param v number
@@ -83,8 +82,6 @@ local CATEGORIES = {
 	{ name = "Sound", items = {
 		{ type = "song", label = "Song" },
 		{ type = "number", key = "MUSIC_VOLUME", label = "Volume", step = 0.05, min = 0, max = 1, percent = true },
-		{ type = "number", key = "MUSIC_VOLUME_MIN", label = "Volume Min", step = 0.05, min = 0, max = 1, percent = true },
-		{ type = "number", key = "MUSIC_VOLUME_MAX", label = "Volume Max", step = 0.05, min = 0, max = 1, percent = true },
 	} },
 	{ name = "Tuning", items = {
 		{ type = "action", label = "Open Tuning Menu", action = function() Noble.transition(TuningScene) end },
@@ -115,11 +112,11 @@ local function formatValue(item)
 		end
 		return tostring(Config[item.key])
 	elseif item.type == "song" then
-		local songs = MidiPlayer.listSongs()
+		local songs = MusicPlayer.listSongs()
 		if #songs == 0 then return "(no songs found)" end
 		local idx = currentSongIndex()
 		if idx == 1 then return "(none)" end
-		return (songs[idx - 1]:gsub("%.mid$", ""))
+		return songs[idx - 1]
 	end
 	return ""
 end
@@ -216,19 +213,11 @@ local function adjustValue(delta)
 	if item.type == "number" then
 		Config[item.key] = Utils.clamp(roundTo(Config[item.key] + delta * item.step, 2), item.min, item.max)
 		if item.key == "MUSIC_VOLUME" then
-			MidiPlayer.applyVolume()
-		elseif item.key == "MUSIC_VOLUME_MIN" then
-			-- keep min <= max: raising min past max drags max along with it
-			Config.MUSIC_VOLUME_MAX = math.max(Config.MUSIC_VOLUME_MAX, Config.MUSIC_VOLUME_MIN)
-			MidiPlayer.applyDynamics()
-		elseif item.key == "MUSIC_VOLUME_MAX" then
-			-- keep min <= max: lowering max past min drags min along with it
-			Config.MUSIC_VOLUME_MIN = math.min(Config.MUSIC_VOLUME_MIN, Config.MUSIC_VOLUME_MAX)
-			MidiPlayer.applyDynamics()
+			MusicPlayer.applyVolume()
 		end
 		scene:rebuild()
 	elseif item.type == "song" then
-		local songCount = #MidiPlayer.listSongs()
+		local songCount = #MusicPlayer.listSongs()
 		if songCount == 0 then return end
 		selectSong(((currentSongIndex() - 1 + delta) % (songCount + 1)) + 1)
 		scene:rebuild()

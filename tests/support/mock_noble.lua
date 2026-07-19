@@ -75,18 +75,22 @@ function playdate.file.listFiles(path) return {} end
 
 -- playdate.sound ----------------------------------------------------------------
 
--- Just enough for Patches.lua's module-level RECIPES table (built at load
--- time, so these constants must exist before any dofile of it) -- values
--- match the real SDK's playdate.sound.kWave* constants. Nothing else here:
--- MidiPlayer.load()/Patches.instrument() actually build real synth/
--- instrument objects, but no scene-flow test triggers them (no song is ever
--- bundled under lua5.4), so synth/instrument/sequence aren't stubbed.
+-- Just enough for MusicPlayer.lua's module-level `player` field (a
+-- fileplayer is constructed and setFinishCallback'd at load time, so this
+-- must exist before any dofile of it). All methods are no-ops: no
+-- scene-flow test triggers real playback (no song is ever bundled under
+-- lua5.4, since playdate.file.listFiles above always reports empty).
 playdate.sound = playdate.sound or {}
-playdate.sound.kWaveSquare = 0
-playdate.sound.kWaveTriangle = 1
-playdate.sound.kWaveSine = 2
-playdate.sound.kWaveNoise = 3
-playdate.sound.kWaveSawtooth = 4
+playdate.sound.fileplayer = playdate.sound.fileplayer or {}
+function playdate.sound.fileplayer.new(__path, __buffersize)
+	local player = {}
+	function player:load(__path) end
+	function player:play(__repeatCount) return true end
+	function player:stop() end
+	function player:setVolume(__left, __right) end
+	function player:setFinishCallback(__func, __arg) end
+	return player
+end
 
 -- playdate.graphics / kTextAlignment ------------------------------------------
 

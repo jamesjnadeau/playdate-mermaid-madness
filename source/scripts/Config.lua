@@ -169,17 +169,14 @@ Config.SOUND_WHOOSH_SWEEP_RANGE_HZ = 2200 -- how far above SWEEP_MIN_HZ the swee
 -----------
 -- Music --
 -----------
--- MidiPlayer.lua / Patches.lua: synthesized .mid playback -- see
--- MidiPlayer.load's doc comment for the song table shape, and
--- MidiPlayer.selectSong/setEnabled/playDefault for how the fields below get
--- kept in sync between main.lua's boot logic, the system-menu "Music"
+-- MusicPlayer.lua: plays a song's pre-rendered ADPCM .wav pieces (see
+-- tools/render-song.sh) via playdate.sound.fileplayer -- see
+-- MusicPlayer.selectSong/setEnabled/playDefault for how the fields below
+-- get kept in sync between main.lua's boot logic, the system-menu "Music"
 -- checkmark, and SettingsScene's Sound section.
 Config.MUSIC_ENABLED = true   -- master on/off for background music playback
-Config.MUSIC_SONG = nil       -- filename (relative to MidiPlayer.SONGS_DIR), or nil for no song selected
-Config.MUSIC_VOLUME = 0.6     -- 0-1, master volume applied to every loaded track's instrument. Changing this at runtime needs a MidiPlayer.applyVolume() call to take effect immediately.
-Config.MUSIC_VOLUME_MIN = .2   -- 0-1, floor clamped onto every note's own velocity before playback -- raises quiet passages. Source MIDI files (e.g. the bundled Mozart symphony) can swing from pianissimo to fortissimo; this compresses that per-note dynamic range, unlike MUSIC_VOLUME's uniform master gain. Changing at runtime needs MidiPlayer.applyDynamics().
-Config.MUSIC_VOLUME_MAX = .8   -- 0-1, ceiling clamped onto every note's own velocity before playback -- tames loud passages. See MUSIC_VOLUME_MIN. Changing at runtime needs MidiPlayer.applyDynamics().
-Config.MUSIC_MAX_VOICES = 8   -- voices stacked per melodic instrument (so chords don't cut each other's notes), capped here so a dense/chordal track can't eat the whole DSP budget
+Config.MUSIC_SONG = nil       -- song name (a subdirectory of MusicPlayer.SONGS_DIR), or nil for no song selected
+Config.MUSIC_VOLUME = 0.6     -- 0-1, master volume. Changing this at runtime needs a MusicPlayer.applyVolume() call to take effect immediately.
 
 ---------
 -- HUD --

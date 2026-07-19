@@ -231,14 +231,15 @@ covering all of `Config.lua`:
   Player Speed) — moved here (out of the system menu) so the system menu
   stays free for scene-specific items like `GameSceneTraining`'s "Select
   Enemy"; see the 3-item cap note in `CLAUDE.md`.
-- **Sound** — a "Song" row that cycles through `.mid` files found under
-  `source/assets/songs` (scanned once via `playdate.file.listFiles` when
-  `SettingsScene.lua` loads) via `MidiPlayer`, immediately loading and
-  playing whichever one is selected as a live preview (it keeps looping as
-  background music after you leave this scene — nothing stops it), and a
-  "Volume" row (`Config.MUSIC_VOLUME`, applied immediately via
-  `MidiPlayer.applyVolume()`). The choice is recorded in `Config.MUSIC_SONG`
-  (a filename, or nil for no song).
+- **Sound** — a "Song" row that cycles through song subdirectories (each a
+  set of pre-rendered ADPCM `.wav` pieces, see `tools/render-song.sh`) found
+  under `source/assets/songs` (scanned once via `playdate.file.listFiles`)
+  via `MusicPlayer`, immediately loading and playing whichever one is
+  selected as a live preview (it keeps looping as background music after you
+  leave this scene — nothing stops it), and a "Volume" row
+  (`Config.MUSIC_VOLUME`, applied immediately via `MusicPlayer.applyVolume()`).
+  The choice is recorded in `Config.MUSIC_SONG` (a song name, or nil for no
+  song).
 - **Tuning** — a single "Open Tuning Menu" row; A transitions to
   `TuningScene` (see below). This is the only way to reach `TuningScene` —
   it's not on the title screen.

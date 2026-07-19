@@ -12,3 +12,6 @@
 
 # folder I store potential music in locally
 /art-src/music
+
+# Python bytecode cache from tools/midi_force_program.py
+/tools/__pycache__/

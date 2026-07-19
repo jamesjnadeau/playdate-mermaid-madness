@@ -26,8 +26,7 @@ import "scripts/EnemyKraken"
 import "scripts/EnemyDummy"
 import "scripts/Tridentball"
 import "scripts/Sound"
-import "scripts/Patches"
-import "scripts/MidiPlayer"
+import "scripts/MusicPlayer"
 import "scenes/TitleScene"
 import "scenes/InstructionsScene"
 import "scenes/SettingsScene"
@@ -79,11 +78,11 @@ end
 -- Background music: plays the first bundled song (source/assets/songs,
 -- alphabetically) by default -- a no-op if none are bundled. The system
 -- menu's "Music" checkmark is the player-facing on/off switch; it and
--- SettingsScene's Sound section both go through MidiPlayer.setEnabled/
+-- SettingsScene's Sound section both go through MusicPlayer.setEnabled/
 -- selectSong, so all three stay in sync (see Config.MUSIC_ENABLED/MUSIC_SONG).
-MidiPlayer.playDefault()
+MusicPlayer.playDefault()
 playdate.getSystemMenu():addCheckmarkMenuItem("Music", Config.MUSIC_ENABLED, function(value)
-	MidiPlayer.setEnabled(value)
+	MusicPlayer.setEnabled(value)
 end)
 
 -- Boot the engine.

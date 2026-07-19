@@ -1,7 +1,7 @@
 -- load_scenes.lua
 -- Loads the mock Noble Engine (mock_noble.lua), the real Config/Utils/
--- Patches/MidiPlayer scripts scenes import (SettingsScene.lua imports
--- MidiPlayer to preview/select a background song), the GameScene test
+-- MusicPlayer scripts scenes import (SettingsScene.lua imports
+-- MusicPlayer to preview/select a background song), the GameScene test
 -- double (mock_game_scene.lua,
 -- see its header for why GameSceneMain/GameSceneTraining -- and now
 -- InstructionsScene, which extends GameScene too, see its header -- don't use
@@ -20,8 +20,7 @@ dofile("source/scripts/Config.lua")
 dofile("source/scripts/ConfigEnemy.lua")
 dofile("source/scripts/ConfigUpgrades.lua")
 dofile("source/scripts/Utils.lua")
-dofile("source/scripts/Patches.lua")
-dofile("source/scripts/MidiPlayer.lua")
+dofile("source/scripts/MusicPlayer.lua")
 
 dofile("tests/support/mock_game_scene.lua") -- stands in for source/scenes/GameScene.lua
 

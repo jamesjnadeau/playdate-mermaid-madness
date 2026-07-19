@@ -88,7 +88,7 @@ from `main.lua` — the 4th item never appeared. It was fixed by moving the HUD
 toggles (Wind Speed/Direction/Player Speed) out of the system menu entirely
 into `SettingsScene.lua` (reached from `TitleScene`'s "Settings" item). As of
 now two items are live: `main.lua`'s "Music" checkmark (always on, added once
-at boot, synced with `Config.MUSIC_ENABLED` via `MidiPlayer.setEnabled` —
+at boot, synced with `Config.MUSIC_ENABLED` via `MusicPlayer.setEnabled` —
 see `SettingsScene.lua`'s Sound section for the player-facing equivalent) and
 `GameSceneTraining`'s scene-scoped "Select Enemy" (added in `:start()`,
 removed via `removeMenuItem` — not `removeAllMenuItems`, which would also
@@ -96,23 +96,21 @@ wipe out "Music" — in `:finish()`). That's 2 of the 3-item cap; there's
 headroom for exactly one more, but check both of these are still accounted
 for before adding it.
 
-## `playdate.sound.track:setNotes()` adds, it doesn't replace
+## Splitting a rendered song: split the raw PCM, not the encoded ADPCM
 
-`track:setNotes(list)` looks like a setter but isn't one — it's Lua-side
-sugar over the same `addNoteEvent` the C API exposes (`pd_api_sound.h`'s
-`SequenceTrack` struct has `addNoteEvent`/`removeNoteEvent`/`clearNotes`, no
-bulk-replace call), so calling it on a track that already has notes appends
-a second copy of every note instead of replacing them. To actually rewrite a
-track's notes, call `track:clearNotes()` first.
-
-History: hit 2026-07-19 building `MidiPlayer.applyDynamics()` (clamps note
-velocity into `Config.MUSIC_VOLUME_MIN`/`MAX` to tame a source MIDI file's
-loud/quiet swings) — confirmed by checking `$PLAYDATE_SDK_PATH/C_API/pd_api/
-pd_api_sound.h` after the Lua docs (`Inside Playdate.html`) left it
-ambiguous. See `source/scripts/MidiPlayer.lua`'s `applyDynamics` for the
-pattern: cache the track's original `getNotes()` result once (so repeated
-re-clamping with different bounds doesn't compound), then on each call build
-a fresh clamped list and `clearNotes()` + `setNotes()` it.
+`tools/render-song.sh` renders a `.mid` to audio (fluidsynth), then splits
+it into pieces for `source/scripts/MusicPlayer.lua` (see that file's header
+for why: mainly so no single piece is large and pieces can be re-rendered
+independently — `playdate.sound.fileplayer:load()` itself doesn't actually
+read from disk until `play()`/`setBufferSize()` is called, so opening even a
+large file is already cheap). ADPCM is a delta-encoded, stateful format —
+each sample is predicted from the last — so cutting an already-ADPCM-encoded
+file at an arbitrary byte offset leaves the second piece's predictor
+mismatched with what it should have inherited, producing an audible click at
+every piece boundary. `render-song.sh` avoids this by splitting fluidsynth's
+raw PCM output first (`ffmpeg -f segment -c copy`, lossless, no predictor
+state involved) and only then ADPCM-encoding each piece on its own, so every
+piece's predictor starts fresh at silence instead of some mid-song value.
 
 ## `tests/`
 
@@ -151,8 +149,10 @@ transitions or pure logic still needs a human in the Simulator.
   something it doesn't already stub.
 - **`support/mock_noble.lua`** — stand-in for `class()`/`Object`/`NobleScene`/
   `Noble.transition`/`Noble.Input`/`playdate.graphics`/`kTextAlignment`/
-  `playout`/`playdate.getSystemMenu()`, narrow like `mock_playdate.lua`:
-  only what `source/scenes/*.lua` actually touches. `Noble.transition`
+  `playout`/`playdate.getSystemMenu()`/`playdate.sound.fileplayer`, narrow
+  like `mock_playdate.lua`: only what `source/scenes/*.lua` (and
+  `source/scripts/MusicPlayer.lua`, which `SettingsScene.lua` imports)
+  actually touch. `Noble.transition`
   collapses the real engine's animated multi-frame swap into one synchronous
   call (same exit/finish/enter/start order); `Noble.Input.fire(eventName, ...)`
   is a test-only helper that simulates a button press by invoking that event
@@ -233,3 +233,16 @@ so a stale diagram and a stale test tend to go stale together — update both.
   file or config section already exists. Prints the remaining manual wiring
   steps afterward (import in `main.lua`, add to `GameScene.enemyTypes`, tune
   the generated config block).
+- **`render-song.sh [--piano | --program N] [--seconds N] <input.mid> [output-dir]`**
+  — renders a `.mid` to a directory of ADPCM `.wav` pieces (fluidsynth +
+  ffmpeg) for `source/scripts/MusicPlayer.lua` to play via
+  `playdate.sound.fileplayer`; splits the pre-ADPCM raw render into
+  `--seconds`-long pieces (default 60) before encoding each independently —
+  see the ADPCM-splitting gotcha above for why. Requires `fluidsynth`/`ffmpeg`
+  on `PATH` and a General MIDI soundfont (`SOUNDFONT` env var, defaults to
+  Debian's `fluid-soundfont-gm` package); `--piano`/`--program` also need
+  `python3` (drives `tools/midi_force_program.py`, which rewrites every
+  track's GM program number in the `.mid` in place). Output is committed
+  straight to `source/assets/songs/<song name>/` (~20MB for the bundled
+  Mozart movement) rather than gitignored/regenerated in CI — rerun the
+  script by hand if the source `.mid` changes.
