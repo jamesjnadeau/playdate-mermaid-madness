@@ -13,6 +13,11 @@ TitleScene = class("TitleScene").extends(NobleScene) or TitleScene
 
 local scene = nil
 
+-- Splash art, full-screen background behind the menu. Pre-dithered at
+-- 400x240 (see art-src/title-hero.png for the hi-res original) so pdc's
+-- 1-bit conversion happens at the resolution it's actually shown at.
+local heroImage = gfx.image.new("assets/images/title-hero")
+
 -- Menu labels, in order. Kept as plain display strings -- the scene classes
 -- themselves are only referenced inside confirmSelection() below, which runs
 -- long after every scene file has finished loading, so load order here
@@ -37,6 +42,11 @@ local function buildTree(selected, showPrompt)
 		spacing = 14,
 		padding = 20,
 		hAlign = playout.kAlignCenter,
+		-- Opaque card (rather than drawing straight over the art) so the menu
+		-- text stays legible regardless of what's dithered underneath it.
+		backgroundColor = gfx.kColorWhite,
+		border = 2,
+		borderRadius = 6,
 	}, {
 		playout.text.new("* Mermaid Madness *", { alignment = kTextAlignment.center }),
 		playout.text.new("a Playdate pirate voyage", { alignment = kTextAlignment.center }),
@@ -105,6 +115,7 @@ function TitleScene:update()
 	local img = buildTree(self.selected, showPrompt):draw()
 
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
+	heroImage:draw(0, 0)
 	local x = (Config.SCREEN_W - img.width) / 2
 	local y = (Config.SCREEN_H - img.height) / 2
 	img:draw(x, y)
