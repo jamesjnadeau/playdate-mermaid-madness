@@ -6,9 +6,9 @@
 -- the real source/scenes/GameScene.lua), and finally the *real* scene files
 -- under test -- in the same order source/main.lua imports them, since a few
 -- top-level scene statements (e.g. GameSceneMain.inputHandler =
--- GameScene.buildSharedInputHandler(...), or InstructionsScene's own
--- `.extends(GameScene)`) run at load time and need GameScene to already
--- exist.
+-- GameScene.buildSharedInputHandler(...), InstructionsScene's own
+-- `.extends(GameScene)`, or GameSceneDemo's `.extends(GameSceneMain)`) run at
+-- load time and need their parent class to already exist.
 --
 -- dofile'd once from tests/test_scene_flow.lua.
 
@@ -31,3 +31,5 @@ dofile("source/scenes/EnemySelectScene.lua")
 dofile("source/scenes/LevelCompleteScene.lua")
 dofile("source/scenes/UpgradeSelectScene.lua")
 dofile("source/scenes/WindShiftScene.lua")
+dofile("source/scenes/DemoOverScene.lua")
+dofile("source/scenes/GameSceneDemo.lua") -- extends GameSceneMain, must load after it

@@ -14,7 +14,8 @@ keys a scene reads out of it, if any.
 
 ```mermaid
 flowchart TD
-    Title["TitleScene"] -->|"Play (A)"| GameMain["GameSceneMain"]
+    Title["TitleScene"] -->|"Play (A), Config.DEMO_MODE off"| GameMain["GameSceneMain"]
+    Title -->|"Play (A), Config.DEMO_MODE on"| GameDemo["GameSceneDemo"]
     Title -->|"Training (A)"| GameTraining["GameSceneTraining"]
     Title -->|"Instructions (A)"| Instructions["InstructionsScene"]
     Title -->|"Settings (A)"| Settings["SettingsScene"]
@@ -30,13 +31,23 @@ flowchart TD
     GameMain -->|"level target cleared"| LevelComplete["LevelCompleteScene"]
     GameMain -->|"game over, A: restart"| GameMain
 
+    GameDemo -->|"level cleared, cap not reached"| LevelComplete
+    GameDemo -->|"level cleared, cap reached (Config.DEMO_MAX_LEVEL)"| DemoOver["DemoOverScene"]
+    GameDemo -->|"game over, A: restart"| GameDemo
+
     LevelComplete -->|"A"| UpgradeSelect["UpgradeSelectScene"]
 
     UpgradeSelect -->|"A twice, wind step reached"| WindShift["WindShiftScene"]
     UpgradeSelect -->|"A twice, no wind step"| GameMain
+    UpgradeSelect -->|"A twice, no wind step"| GameDemo
 
     WindShift -->|"A"| GameMain
+    WindShift -->|"A"| GameDemo
+
+    DemoOver -->|"A"| Title
 ```
+
+`GameMain`/`GameDemo`'s edges into `LevelComplete`/out of `UpgradeSelect`/`WindShift` all carry a `gameScene` sceneProperty (the class to eventually return to — `GameSceneMain.gameSceneClass`, see `GameSceneMain`/`GameSceneDemo` below) that those three interstitial scenes just forward along without needing to know which one it is — that's what lets the same chain serve both.
 
 Functional coverage of every edge in this diagram (driven by simulated
 button-down events, not the real Simulator) lives in
@@ -53,7 +64,7 @@ Start screen — the game's entry point (`main.lua` calls
 - **Reached from:** app launch only.
 - **Controls:** Up/Down move the highlight (wraps); A confirms.
 - **Menu items → transitions:**
-  - "Play" → `GameSceneMain`
+  - "Play" → `GameSceneMain` (or `GameSceneDemo`, if `Config.DEMO_MODE` is on)
   - "Training" → `GameSceneTraining`
   - "Instructions" → `InstructionsScene`
   - "Settings" → `SettingsScene`
@@ -63,10 +74,17 @@ Start screen — the game's entry point (`main.lua` calls
 
 The real game. Enemies spawn automatically on a shrinking timer, capped per
 level (`Config.LEVEL_ENEMY_STEP` enemies per level N). Clearing a level's
-kill target hands off to `LevelCompleteScene`; every wind-escalation step
+kill target calls `self:onLevelComplete()`; every wind-escalation step
 (`Config.LEVEL_WIND_STEP_INTERVAL` levels) routes the *next* level through
 `WindShiftScene` first instead of coming straight back here (see
 `GameSceneMain.windStepForLevel`).
+
+`GameSceneMain.gameSceneClass` (class-level, defaults to `GameSceneMain`
+itself) is what the shared `AButtonDown` restart handler and
+`onLevelComplete`/the `LevelCompleteScene`→`UpgradeSelectScene`→
+`WindShiftScene` chain actually transition back to, instead of hardcoding
+`GameSceneMain` — see `GameSceneDemo` below, the one other class that sets
+this to something else.
 
 - **Reached from:** `TitleScene` ("Play", no properties — starts at level 1),
   `UpgradeSelectScene` or `WindShiftScene` (continuing a run).
@@ -77,8 +95,45 @@ kill target hands off to `LevelCompleteScene`; every wind-escalation step
 - **sceneProperties read:** `level` (default 1), `totalDefeated` (default 0,
   becomes `self.score`).
 - **Transitions out:**
-  - Level's kill target reached → `Noble.transition(LevelCompleteScene, ..., { completedLevel, totalDefeated })`
-  - `gameOver` and A pressed → `Noble.transition(GameSceneMain)` (fresh run)
+  - Level's kill target reached → `self:onLevelComplete()` →
+    `Noble.transition(LevelCompleteScene, ..., { completedLevel, totalDefeated, gameScene = self.gameSceneClass })`
+  - `gameOver` and A pressed → `Noble.transition(self.gameSceneClass)` (fresh run)
+
+## GameSceneDemo
+
+A level-capped variant of `GameSceneMain` for a trade-show/kiosk build:
+extends `GameSceneMain` directly and inherits everything (spawning, level
+progression, wind tuning, upgrade-select flow, shared input handler) except
+`onLevelComplete`, which it overrides to end the run via `DemoOverScene`
+instead of continuing to the next level once `self.level >=
+Config.DEMO_MAX_LEVEL`. `GameSceneDemo.gameSceneClass = GameSceneDemo`
+(see `GameSceneMain.gameSceneClass` above) is the only other thing it sets —
+that alone is what keeps a mid-run restart or an upgrade-select "continue"
+landing back on `GameSceneDemo` instead of the uncapped `GameSceneMain`.
+
+- **Reached from:** `TitleScene` ("Play", only when `Config.DEMO_MODE` is
+  true), `UpgradeSelectScene` or `WindShiftScene` (continuing a run below the
+  cap).
+- **Controls:** identical to `GameSceneMain` (inherited, not redeclared).
+- **sceneProperties read:** same as `GameSceneMain` (inherited `resetGame`).
+- **Transitions out:**
+  - Level's kill target reached, `self.level < Config.DEMO_MAX_LEVEL` →
+    same as `GameSceneMain`, with `gameScene = GameSceneDemo`.
+  - Level's kill target reached, `self.level >= Config.DEMO_MAX_LEVEL` →
+    `Noble.transition(DemoOverScene, ..., { completedLevel, totalDefeated })`.
+  - `gameOver` and A pressed → `Noble.transition(GameSceneDemo)` (fresh run).
+
+## DemoOverScene
+
+Shown once `GameSceneDemo` reaches its level cap — reports levels cleared
+and enemies defeated, then returns to `TitleScene`. Only reachable in a
+`Config.DEMO_MODE` build.
+
+- **Reached from:** `GameSceneDemo` (level cap reached).
+- **Controls:** A returns to `TitleScene`.
+- **sceneProperties read:** `completedLevel` (default 1), `totalDefeated`
+  (default 0).
+- **Transitions out:** A → `Noble.transition(TitleScene)`.
 
 ## GameSceneTraining
 
@@ -168,15 +223,17 @@ for scene-specific items like `GameSceneTraining`'s "Select Enemy"; see the
 
 ## LevelCompleteScene
 
-Interstitial shown after clearing a level: reports the running defeated
-total, then hands off to `UpgradeSelectScene` to pick a run upgrade before
-continuing.
+Interstitial shown after clearing a level (below the demo cap, if any):
+reports the running defeated total, then hands off to `UpgradeSelectScene`
+to pick a run upgrade before continuing. Just forwards `gameScene` along
+without needing to know what it is — see `GameSceneMain.gameSceneClass`.
 
-- **Reached from:** `GameSceneMain` (level target cleared).
+- **Reached from:** `GameSceneMain`/`GameSceneDemo` (level target cleared,
+  via `onLevelComplete`).
 - **Controls:** A continues.
 - **sceneProperties read:** `completedLevel` (default 1), `totalDefeated`
-  (default 0).
-- **Transitions out:** A → `Noble.transition(UpgradeSelectScene, ..., { level = completedLevel + 1, completedLevel, totalDefeated })`.
+  (default 0), `gameScene` (default `GameSceneMain`).
+- **Transitions out:** A → `Noble.transition(UpgradeSelectScene, ..., { level = completedLevel + 1, completedLevel, totalDefeated, gameScene })`.
 
 ## UpgradeSelectScene
 
@@ -184,28 +241,30 @@ Offers 3 randomly-drawn entries from `Config.UPGRADES`
 (`source/scripts/ConfigUpgrades.lua`), rendered with
 [playout](../libraries/playout.lua). Two phases: `"select"` (pick one) then
 `"result"` (before/after readout), each its own screen behind the same A
-button. Carries the level/wind-step handoff the rest of the way — decides
-whether the run continues straight into `GameSceneMain` or detours through
-`WindShiftScene` first.
+button. Carries the level/wind-step/gameScene handoff the rest of the way —
+decides whether the run continues straight back into `self.gameScene` or
+detours through `WindShiftScene` first.
 
 - **Reached from:** `LevelCompleteScene`.
 - **Controls:** Up/Down move the highlight (`"select"` phase only); A
   applies the highlighted upgrade (via `Config.applyUpgrade`) and swaps to
   the result screen; a second A continues on.
 - **sceneProperties read:** `level` (default 1), `completedLevel` (default
-  `level - 1`), `totalDefeated` (default 0).
+  `level - 1`), `totalDefeated` (default 0), `gameScene` (default
+  `GameSceneMain`).
 - **Transitions out (second A press, from `"result"` phase):**
   - `GameSceneMain.windStepForLevel(level) > GameSceneMain.windStepForLevel(completedLevel)`
-    → `Noble.transition(WindShiftScene, ..., { level, totalDefeated })`
-  - otherwise → `Noble.transition(GameSceneMain, ..., { level, totalDefeated })`
+    → `Noble.transition(WindShiftScene, ..., { level, totalDefeated, gameScene })`
+  - otherwise → `Noble.transition(self.gameScene, ..., { level, totalDefeated, gameScene })`
 
 ## WindShiftScene
 
 Interstitial warning shown only on levels where clearing also lands a wind
 escalation step (see `GameSceneMain.windStepForLevel`) — other levels skip
-straight from `UpgradeSelectScene` to `GameSceneMain`.
+straight from `UpgradeSelectScene` back to `gameScene`.
 
 - **Reached from:** `UpgradeSelectScene` (wind-step levels only).
 - **Controls:** A continues.
-- **sceneProperties read:** `level` (default 1), `totalDefeated` (default 0).
-- **Transitions out:** A → `Noble.transition(GameSceneMain, ..., { level, totalDefeated })`.
+- **sceneProperties read:** `level` (default 1), `totalDefeated` (default
+  0), `gameScene` (default `GameSceneMain`).
+- **Transitions out:** A → `Noble.transition(self.gameScene, ..., { level, totalDefeated })`.

@@ -14,7 +14,9 @@
 -- "does this button transition to the right scene." The double keeps
 -- GameSceneMain/GameSceneTraining/InstructionsScene's *own* code (level-clear
 -- detection, spawn caps, the enemy-select handoff, tutorial step progress)
--- real and under test.
+-- real and under test. GameSceneDemo extends the real GameSceneMain (not the
+-- double) -- it only overrides onLevelComplete, so it rides on whatever
+-- GameSceneMain itself is built on.
 
 dofile("tests/support/load_scenes.lua")
 
@@ -344,4 +346,63 @@ function TestSceneFlow:testWindShiftConfirmTransitionsToGameSceneMain()
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.level, 4)
 	lu.assertEquals(scene.score, 12)
+end
+
+-- --- GameSceneDemo / DemoOverScene ------------------------------------------
+
+function TestSceneFlow:testTitlePlayRoutesToGameSceneDemoWhenDemoModeOn()
+	Config.DEMO_MODE = true
+	Noble.Input.fire("upButtonDown") -- default selected 2 ("Training") -> 1 ("Play")
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(currentClassName(), "GameSceneDemo")
+end
+
+-- Regression check for GameSceneMain.gameSceneClass: the shared AButtonDown
+-- restart handler used to hardcode Noble.transition(GameSceneMain), which
+-- would have silently dropped a demo run's restart into the uncapped
+-- GameSceneMain instead of back into GameSceneDemo.
+function TestSceneFlow:testGameSceneDemoGameOverRestartsIntoGameSceneDemo()
+	Noble.transition(GameSceneDemo)
+	local scene = Noble.currentScene()
+	scene.gameOver = true
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(currentClassName(), "GameSceneDemo")
+end
+
+-- GameSceneDemo only overrides onLevelComplete (everything else, including
+-- spawning/level progression/the shared input handler, is inherited
+-- unchanged from GameSceneMain): below the level cap it behaves exactly like
+-- GameSceneMain, just carrying itself forward as `gameScene` through the
+-- LevelComplete/UpgradeSelect/WindShift chain -- see GameSceneMain.gameSceneClass
+-- and the GameSceneMain/LevelCompleteScene tests above, which don't pass
+-- `gameScene` and so exercise that chain's `GameSceneMain` fallback default.
+function TestSceneFlow:testGameSceneDemoBelowCapContinuesLikeGameSceneMain()
+	Noble.transition(GameSceneDemo, nil, nil, nil, { level = Config.DEMO_MAX_LEVEL - 1 })
+	local scene = Noble.currentScene()
+
+	for _ = 1, scene.levelTarget do
+		scene:enemyDefeated()
+	end
+	scene:tickGame()
+
+	lu.assertEquals(currentClassName(), "LevelCompleteScene")
+	lu.assertEquals(Noble.currentScene().gameScene, GameSceneDemo)
+end
+
+function TestSceneFlow:testGameSceneDemoAtCapEndsViaDemoOverSceneThenBackToTitle()
+	Noble.transition(GameSceneDemo, nil, nil, nil, { level = Config.DEMO_MAX_LEVEL, totalDefeated = 7 })
+	local scene = Noble.currentScene()
+
+	for _ = 1, scene.levelTarget do
+		scene:enemyDefeated()
+	end
+	scene:tickGame()
+
+	lu.assertEquals(currentClassName(), "DemoOverScene")
+	local demoOver = Noble.currentScene()
+	lu.assertEquals(demoOver.completedLevel, Config.DEMO_MAX_LEVEL)
+	lu.assertEquals(demoOver.totalDefeated, 7 + scene.levelTarget)
+
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(currentClassName(), "TitleScene")
 end

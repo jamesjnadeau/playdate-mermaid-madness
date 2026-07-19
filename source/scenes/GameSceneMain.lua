@@ -1,7 +1,9 @@
 -- GameSceneMain.lua
 -- The real game: enemies spawn automatically on a shrinking timer, capped
 -- per level, and clearing a level's kill target hands off to
--- LevelCompleteScene for the next one.
+-- LevelCompleteScene for the next one -- see onLevelComplete, which
+-- GameSceneDemo (a level-capped build variant, see Config.DEMO_MODE)
+-- overrides to end the run instead once its cap is reached.
 
 import "scripts/Config"
 import "scripts/ConfigEnemy"
@@ -11,6 +13,7 @@ import "scenes/GameScene"
 local gfx <const> = playdate.graphics
 
 ---@class GameSceneMain : GameScene
+---@field gameSceneClass table class-level: which class to restart/continue into -- see the comment on the assignment below
 ---@field level number set in resetGame; overrides GameScene's optional field
 ---@field spawnTimer number seconds until the next automatic spawn
 ---@field levelKills number kills toward clearing the current level
@@ -18,6 +21,14 @@ local gfx <const> = playdate.graphics
 ---@field levelTarget number levelKills needed to clear the level
 ---@field levelComplete boolean
 GameSceneMain = class("GameSceneMain").extends(GameScene) or GameSceneMain
+
+-- Class-level self-reference read by the shared AButtonDown restart handler
+-- below and by onLevelComplete/the LevelCompleteScene -> UpgradeSelectScene
+-- -> WindShiftScene interstitial chain, so a restart or "continue" always
+-- lands back on the right game scene class. GameSceneDemo overrides this to
+-- its own class so death/continue never accidentally drops the player out of
+-- demo mode into the uncapped GameSceneMain.
+GameSceneMain.gameSceneClass = GameSceneMain
 
 ---@param a number
 ---@param b number
@@ -28,7 +39,7 @@ local function lerp(a, b, t) return a + (b - a) * t end
 GameSceneMain.inputHandler = GameScene.buildSharedInputHandler(GameScene.current)
 GameSceneMain.inputHandler.AButtonDown = function()
 	local s = GameScene.current()
-	if s and s.gameOver then Noble.transition(GameSceneMain) end
+	if s and s.gameOver then Noble.transition(s.gameSceneClass) end
 end
 
 ---@param sceneProperties? table
@@ -109,19 +120,30 @@ function GameSceneMain:enemyDefeated()
 	self.levelKills = self.levelKills + 1
 end
 
--- Level clears once enough enemies have been defeated; hand off to the
--- interstitial scene, which restarts GameSceneMain at the next level with
--- health reset (Player:init always sets full health).
+-- Level clears once enough enemies have been defeated; hand off to
+-- onLevelComplete below.
 function GameSceneMain:tickGame()
 	if self.levelComplete then return end
 	GameSceneMain.super.tickGame(self)
 	if self.levelKills >= self.levelTarget then
 		self.levelComplete = true
-		Noble.transition(LevelCompleteScene, nil, nil, nil, {
-			completedLevel = self.level,
-			totalDefeated = self.score,
-		})
+		self:onLevelComplete()
 	end
+end
+
+-- Hook for what happens once a level's kill target is reached -- default:
+-- hand off to LevelCompleteScene, which carries self.gameSceneClass the rest
+-- of the way through UpgradeSelectScene (and WindShiftScene, on levels that
+-- land a wind-escalation step) back to a fresh level, restarting whichever
+-- game scene class actually completed this one, with health reset
+-- (Player:init always sets full health). GameSceneDemo overrides this to end
+-- the run instead, once its own level cap is reached.
+function GameSceneMain:onLevelComplete()
+	Noble.transition(LevelCompleteScene, nil, nil, nil, {
+		completedLevel = self.level,
+		totalDefeated = self.score,
+		gameScene = self.gameSceneClass,
+	})
 end
 
 function GameSceneMain:drawModeStatus()

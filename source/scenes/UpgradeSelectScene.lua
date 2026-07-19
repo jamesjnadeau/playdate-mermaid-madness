@@ -6,7 +6,8 @@
 -- description of the highlighted upgrade. Up/Down move the highlight, Ⓐ
 -- applies the highlighted upgrade (via Config.applyUpgrade) and swaps to a
 -- before/after summary; a second Ⓐ continues on to WindShiftScene or
--- GameSceneMain, mirroring LevelCompleteScene's own transition logic.
+-- straight back to self.gameScene (see GameSceneMain.gameSceneClass),
+-- mirroring LevelCompleteScene's own transition logic.
 
 import "scripts/Config"
 import "scripts/ConfigUpgrades"
@@ -17,6 +18,7 @@ local gfx <const> = playdate.graphics
 ---@field level integer
 ---@field completedLevel integer
 ---@field totalDefeated integer
+---@field gameScene table class table (GameSceneMain or a subclass, e.g. GameSceneDemo) to eventually return to -- see GameSceneMain.gameSceneClass
 ---@field upgrades Config.Upgrade[] this round's 3 random picks
 ---@field selected integer index into self.upgrades
 ---@field phase string "select" | "result"
@@ -123,6 +125,7 @@ function UpgradeSelectScene:init(sceneProperties)
 	self.level = sceneProperties.level or 1
 	self.completedLevel = sceneProperties.completedLevel or (self.level - 1)
 	self.totalDefeated = sceneProperties.totalDefeated or 0
+	self.gameScene = sceneProperties.gameScene or GameSceneMain
 
 	self.upgrades = pickUpgrades(3)
 	self.selected = 1
@@ -177,10 +180,11 @@ UpgradeSelectScene.inputHandler = {
 		else
 			local windStepped = GameSceneMain.windStepForLevel(scene.level)
 				> GameSceneMain.windStepForLevel(scene.completedLevel)
-			local nextScene = windStepped and WindShiftScene or GameSceneMain
+			local nextScene = windStepped and WindShiftScene or scene.gameScene
 			Noble.transition(nextScene, nil, nil, nil, {
 				level = scene.level,
 				totalDefeated = scene.totalDefeated,
+				gameScene = scene.gameScene,
 			})
 		end
 	end,

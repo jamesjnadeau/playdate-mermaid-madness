@@ -196,6 +196,17 @@ Config.LEVEL_WIND_SPEED_CHANGE_RATE_STEP = 0.3 -- px/s per second added to the w
 Config.LEVEL_WIND_CHANGE_INTERVAL_STEP   = 0.75 -- seconds shaved off the time between wind changes, per step
 Config.WIND_CHANGE_INTERVAL_FLOOR        = 4   -- seconds; LEVEL_WIND_CHANGE_INTERVAL_STEP won't shrink the interval past this
 
+---------------
+-- Demo mode --
+---------------
+-- Set true to make TitleScene's "Play" item launch GameSceneDemo instead of
+-- GameSceneMain -- see TitleScene's confirmSelection. This is a build-time
+-- switch (baked into the compiled .pdx via this default, not a runtime
+-- Settings toggle), meant for shipping a capped trade-show/kiosk build.
+-- Off by default -- flip to true and rebuild to produce a demo .pdx.
+Config.DEMO_MODE = false
+Config.DEMO_MAX_LEVEL = 3 -- levels GameSceneDemo plays through before DemoOverScene ends the run
+
 ------------------
 -- Title screen --
 ------------------

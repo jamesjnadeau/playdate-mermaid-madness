@@ -1,9 +1,9 @@
 -- WindShiftScene.lua
 -- Interstitial shown when clearing a level also lands a wind escalation step
 -- (see Config.LEVEL_WIND_STEP_INTERVAL / GameSceneMain.windStepForLevel).
--- Warns the player before dropping them into GameSceneMain with tougher
--- wind. LevelCompleteScene routes here only on levels where the step
--- actually changes; other levels go straight to GameSceneMain.
+-- Warns the player before dropping them into self.gameScene with tougher
+-- wind. UpgradeSelectScene routes here only on levels where the step
+-- actually changes; other levels go straight back to gameScene.
 
 import "scripts/Config"
 
@@ -12,6 +12,7 @@ local gfx <const> = playdate.graphics
 ---@class WindShiftScene : NobleScene
 ---@field level integer
 ---@field totalDefeated integer
+---@field gameScene table class table (GameSceneMain or a subclass, e.g. GameSceneDemo) to return to -- see GameSceneMain.gameSceneClass
 WindShiftScene = class("WindShiftScene").extends(NobleScene) or WindShiftScene
 
 local scene = nil
@@ -23,6 +24,7 @@ function WindShiftScene:init(sceneProperties)
 	sceneProperties = sceneProperties or {}
 	self.level = sceneProperties.level or 1
 	self.totalDefeated = sceneProperties.totalDefeated or 0
+	self.gameScene = sceneProperties.gameScene or GameSceneMain
 end
 
 function WindShiftScene:start()
@@ -38,7 +40,7 @@ end
 WindShiftScene.inputHandler = {
 	AButtonDown = function()
 		if scene then
-			Noble.transition(GameSceneMain, nil, nil, nil, {
+			Noble.transition(scene.gameScene, nil, nil, nil, {
 				level = scene.level,
 				totalDefeated = scene.totalDefeated,
 			})

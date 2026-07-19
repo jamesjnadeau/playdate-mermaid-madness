@@ -30,11 +30,13 @@ import "scenes/InstructionsScene"
 import "scenes/SettingsScene"
 import "scenes/GameScene"
 import "scenes/GameSceneMain"
+import "scenes/GameSceneDemo"
 import "scenes/GameSceneTraining"
 import "scenes/EnemySelectScene"
 import "scenes/LevelCompleteScene"
 import "scenes/UpgradeSelectScene"
 import "scenes/WindShiftScene"
+import "scenes/DemoOverScene"
 
 -- Lock to a fixed 30fps so our fixed-timestep (Config.DT) matches wall-clock.
 playdate.display.setRefreshRate(Config.REFRESH)
@@ -48,11 +50,13 @@ local sceneByName = {
 	Instructions = InstructionsScene,
 	Settings = SettingsScene,
 	GameMain = GameSceneMain,
+	GameDemo = GameSceneDemo,
 	GameTraining = GameSceneTraining,
 	EnemySelect = EnemySelectScene,
 	LevelComplete = LevelCompleteScene,
 	UpgradeSelect = UpgradeSelectScene,
 	WindShift = WindShiftScene,
+	DemoOver = DemoOverScene,
 }
 
 local startSceneName = playdate.argv[1] or Config.START_SCENE

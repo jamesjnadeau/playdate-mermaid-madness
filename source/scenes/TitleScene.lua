@@ -96,7 +96,9 @@ end
 local function confirmSelection()
 	if not scene then return end
 	if scene.selected == 1 then
-		Noble.transition(GameSceneMain)
+		-- Config.DEMO_MODE (off by default) swaps in the level-capped
+		-- GameSceneDemo for a trade-show/kiosk build -- see Config.lua.
+		Noble.transition(Config.DEMO_MODE and GameSceneDemo or GameSceneMain)
 	elseif scene.selected == 2 then
 		Noble.transition(GameSceneTraining)
 	elseif scene.selected == 3 then

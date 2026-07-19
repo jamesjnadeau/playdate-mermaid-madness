@@ -1,9 +1,9 @@
 -- LevelCompleteScene.lua
 -- Interstitial shown after clearing a level: reports the running defeated
 -- total, then hands off to UpgradeSelectScene to pick a run upgrade before
--- continuing. UpgradeSelectScene carries the level/wind-step handoff the
--- rest of the way (to WindShiftScene or GameSceneMain, see
--- GameSceneMain.windStepForLevel).
+-- continuing. UpgradeSelectScene carries the level/wind-step/gameScene
+-- handoff the rest of the way (to WindShiftScene or back to gameScene
+-- itself, see GameSceneMain.windStepForLevel).
 
 import "scripts/Config"
 
@@ -12,6 +12,7 @@ local gfx <const> = playdate.graphics
 ---@class LevelCompleteScene : NobleScene
 ---@field completedLevel integer
 ---@field totalDefeated integer
+---@field gameScene table class table (GameSceneMain or a subclass, e.g. GameSceneDemo) to eventually return to -- see GameSceneMain.gameSceneClass
 LevelCompleteScene = class("LevelCompleteScene").extends(NobleScene) or LevelCompleteScene
 
 local scene = nil
@@ -23,6 +24,7 @@ function LevelCompleteScene:init(sceneProperties)
 	sceneProperties = sceneProperties or {}
 	self.completedLevel = sceneProperties.completedLevel or 1
 	self.totalDefeated = sceneProperties.totalDefeated or 0
+	self.gameScene = sceneProperties.gameScene or GameSceneMain
 end
 
 function LevelCompleteScene:start()
@@ -43,6 +45,7 @@ LevelCompleteScene.inputHandler = {
 				level = nextLevel,
 				completedLevel = scene.completedLevel,
 				totalDefeated = scene.totalDefeated,
+				gameScene = scene.gameScene,
 			})
 		end
 	end,
