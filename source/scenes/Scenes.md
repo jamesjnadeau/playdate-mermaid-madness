@@ -118,10 +118,14 @@ one.
 
 ## InstructionsScene
 
-Static how-to-play text.
+Step-by-step how-to-play walkthrough: one prompt at a time (steer, trim
+sails, charge a broadside), each clearing only once the player actually
+performs that input, then advancing to the next.
 
 - **Reached from:** `TitleScene` ("Instructions").
-- **Controls:** B returns to `TitleScene`.
+- **Controls:** Crank/Up/Down/Left/Right advance the current step once
+  performed (crank requires a cumulative turn, see `CRANK_STEP_DEGREES`); B
+  returns to `TitleScene` at any point, regardless of step.
 - **sceneProperties read:** none.
 
 ## SettingsScene

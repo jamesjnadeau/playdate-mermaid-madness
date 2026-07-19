@@ -199,8 +199,8 @@ Config.WIND_CHANGE_INTERVAL_FLOOR        = 4   -- seconds; LEVEL_WIND_CHANGE_INT
 -- The menu card stays hidden below the screen for TITLE_MENU_DELAY seconds
 -- (letting the splash art sit alone for a beat), then rises into place over
 -- TITLE_MENU_RISE_DURATION seconds -- see TitleScene:update.
-Config.TITLE_MENU_DELAY = 1.2          -- seconds before the menu starts rising in
-Config.TITLE_MENU_RISE_DURATION = 0.7  -- seconds for the rise-in animation
+Config.TITLE_MENU_DELAY = 3          -- seconds before the menu starts rising in
+Config.TITLE_MENU_RISE_DURATION = 1.5  -- seconds for the rise-in animation
 
 ----------
 -- Boot --
