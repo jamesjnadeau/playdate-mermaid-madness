@@ -18,6 +18,19 @@ local scene = nil
 -- 1-bit conversion happens at the resolution it's actually shown at.
 local heroImage = gfx.image.new("assets/images/title-hero")
 
+-- Ease-out-back: eases toward 1 but overshoots past it first before settling
+-- back -- used for the menu's rise-in below so it crests up past its resting
+-- position and settles down, like a wave washing up the shore rather than a
+-- mechanical slide. Standard cubic-with-overshoot coefficients (c1 = 1.70158).
+---@param t number 0-1
+---@return number eased, >1 during the overshoot, exactly 1 at t=1
+local function easeOutBack(t)
+	local c1 = 1.70158
+	local c3 = c1 + 1
+	local inv = t - 1
+	return 1 + c3 * inv * inv * inv + c1 * inv * inv
+end
+
 -- Menu labels, in order. Kept as plain display strings -- the scene classes
 -- themselves are only referenced inside confirmSelection() below, which runs
 -- long after every scene file has finished loading, so load order here
@@ -116,7 +129,14 @@ function TitleScene:update()
 
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 	heroImage:draw(0, 0)
+
 	local x = (Config.SCREEN_W - img.width) / 2
-	local y = (Config.SCREEN_H - img.height) / 2
+	local restY = (Config.SCREEN_H - img.height) / 2
+
+	-- Hidden below the screen until TITLE_MENU_DELAY elapses, then rises to
+	-- restY over TITLE_MENU_RISE_DURATION seconds. progress <= 0 (still
+	-- waiting out the delay) clamps to y = SCREEN_H, i.e. fully offscreen.
+	local progress = Utils.clamp((self.t - Config.TITLE_MENU_DELAY) / Config.TITLE_MENU_RISE_DURATION, 0, 1)
+	local y = Config.SCREEN_H - (Config.SCREEN_H - restY) * easeOutBack(progress)
 	img:draw(x, y)
 end

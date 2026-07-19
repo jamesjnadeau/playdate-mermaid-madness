@@ -193,6 +193,15 @@ Config.LEVEL_WIND_SPEED_CHANGE_RATE_STEP = 0.3 -- px/s per second added to the w
 Config.LEVEL_WIND_CHANGE_INTERVAL_STEP   = 0.75 -- seconds shaved off the time between wind changes, per step
 Config.WIND_CHANGE_INTERVAL_FLOOR        = 4   -- seconds; LEVEL_WIND_CHANGE_INTERVAL_STEP won't shrink the interval past this
 
+------------------
+-- Title screen --
+------------------
+-- The menu card stays hidden below the screen for TITLE_MENU_DELAY seconds
+-- (letting the splash art sit alone for a beat), then rises into place over
+-- TITLE_MENU_RISE_DURATION seconds -- see TitleScene:update.
+Config.TITLE_MENU_DELAY = 1.2          -- seconds before the menu starts rising in
+Config.TITLE_MENU_RISE_DURATION = 0.7  -- seconds for the rise-in animation
+
 ----------
 -- Boot --
 ----------
