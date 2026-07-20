@@ -90,4 +90,8 @@ playdate.getSystemMenu():addCheckmarkMenuItem("Music", Config.MUSIC_ENABLED, fun
 end)
 
 -- Boot the engine.
-Noble.new(StartScene)
+-- Add a short delay (e.g., 2 frames) before starting the first scene
+playdate.timer.performAfterDelay(2, function()
+	Noble.new(StartScene)
+end)
+
