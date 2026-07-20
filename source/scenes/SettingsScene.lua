@@ -9,10 +9,10 @@
 -- "Music" checkmark use, so all three stay in sync), and Tuning (a single
 -- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
 -- longer reachable directly from the title screen, only through here).
--- Built with the playout UI library, see libraries/playout.lua. Up/Down
--- move the highlight (wraps); Left/Right cycle the song or adjust the
--- volume; Ⓐ toggles a HUD setting or opens Tuning; Ⓑ returns to the title
--- screen.
+-- Built with the playout UI library, see libraries/playout.lua. Up/Down (or
+-- the crank) move the highlight (wraps); Left/Right cycle the song or adjust
+-- the volume; Ⓐ toggles a HUD setting or opens Tuning; Ⓑ returns to the
+-- title screen.
 
 import "scripts/utilities/Config"
 import "scripts/utilities/Utils"
@@ -34,9 +34,14 @@ local gfx <const> = playdate.graphics
 ---@field selected integer index into SETTING_ROWS
 ---@field tree table playout tree, see rebuild()
 ---@field img _Image drawn image of the playout tree, see rebuild()
+---@field crankAccum number leftover crank degrees not yet converted into a row move, see the cranked handler
 SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 
 local scene = nil
+
+-- Degrees of crank rotation that scrolls the list by one row, same idea
+-- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
+local CRANK_DEGREES_PER_ROW = 20
 
 -- The song row cycles a virtual list: index 1 is always "no song", indices
 -- 2.. map to MusicPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
@@ -176,6 +181,7 @@ function SettingsScene:init(...)
 	SettingsScene.super.init(self, ...)
 	self.backgroundColor = gfx.kColorWhite
 	self.selected = 1
+	self.crankAccum = 0
 
 	-- Built here rather than in :start() -- Noble may call :update() during
 	-- the tail of the transition in, before :start() fires (see GameScene's
@@ -248,6 +254,22 @@ SettingsScene.inputHandler = {
 	AButtonDown = function() activate() end,
 	BButtonDown = function()
 		if scene then Noble.transition(TitleScene) end
+	end,
+	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
+	-- highlight one row per CRANK_DEGREES_PER_ROW degrees turned, in either
+	-- direction. crankAccum carries leftover sub-threshold rotation between
+	-- calls.
+	cranked = function(change)
+		if not scene then return end
+		scene.crankAccum = scene.crankAccum + change
+		while scene.crankAccum >= CRANK_DEGREES_PER_ROW do
+			moveSelection(1)
+			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ROW
+		end
+		while scene.crankAccum <= -CRANK_DEGREES_PER_ROW do
+			moveSelection(-1)
+			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ROW
+		end
 	end,
 }
 

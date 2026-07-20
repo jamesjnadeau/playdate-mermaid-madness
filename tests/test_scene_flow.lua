@@ -63,6 +63,24 @@ function TestSceneFlow:testTitleMenuNavigationWraps()
 	lu.assertEquals(Noble.currentScene().selected, 2) -- back to "Training"
 end
 
+-- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
+-- TitleScene.CRANK_DEGREES_PER_ITEM), same mechanism as TuningScene's below.
+function TestSceneFlow:testTitleMenuCrankScroll()
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.selected, 2) -- default: "Training"
+
+	Noble.Input.fire("cranked", 57) -- 2 full items (40 deg) + 17 deg leftover
+	lu.assertEquals(scene.selected, 4) -- "Settings"
+	lu.assertEquals(scene.crankAccum, 17)
+
+	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one item back, 0 leftover
+	lu.assertEquals(scene.selected, 3) -- "Instructions"
+	lu.assertEquals(scene.crankAccum, 0)
+
+	Noble.Input.fire("cranked", -20) -- one more item back
+	lu.assertEquals(scene.selected, 2) -- "Training"
+end
+
 function TestSceneFlow:testTitlePlaySelectionTransitionsToGameSceneMain()
 	Noble.Input.fire("upButtonDown") -- 2 -> 1 ("Play")
 	Noble.Input.fire("AButtonDown")
@@ -211,6 +229,24 @@ function TestSceneFlow:testTitleSettingsToggleAndBack()
 
 	Noble.Input.fire("BButtonDown")
 	lu.assertEquals(currentClassName(), "TitleScene")
+end
+
+-- Exercises the crank fast-scroll path (moves one row per 20 degrees, see
+-- SettingsScene.CRANK_DEGREES_PER_ROW), same mechanism as TuningScene's.
+function TestSceneFlow:testTitleSettingsCrankScroll()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
+	Noble.Input.fire("AButtonDown")
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.selected, 1)
+
+	Noble.Input.fire("cranked", 57) -- 2 full rows (40 deg) + 17 deg leftover
+	lu.assertEquals(scene.selected, 3)
+	lu.assertEquals(scene.crankAccum, 17)
+
+	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one row back, 0 leftover
+	lu.assertEquals(scene.selected, 2)
+	lu.assertEquals(scene.crankAccum, 0)
 end
 
 -- Unlike the other HUD_SHOW_* rows, toggling "FPS Counter" (SETTING_ROWS[4])
@@ -394,6 +430,22 @@ function TestSceneFlow:testGameSceneTrainingEnemySelectConfirmSetsForcedType()
 	lu.assertEquals(getmetatable(scene.enemies[1]), StubEnemyB)
 end
 
+-- GameScene.enemyTypes is stubbed to 2 entries in tests (see
+-- mock_game_scene.lua), so a single 20-degree crank tick is enough to move
+-- one item and wrap back.
+function TestSceneFlow:testGameSceneTrainingEnemySelectCrankScrollWraps()
+	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
+	playdate.getSystemMenu():getMenuItems()[1].callback() -- -> EnemySelectScene
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.selected, 1)
+
+	Noble.Input.fire("cranked", 20)
+	lu.assertEquals(scene.selected, 2)
+
+	Noble.Input.fire("cranked", 20) -- wraps back to 1
+	lu.assertEquals(scene.selected, 1)
+end
+
 function TestSceneFlow:testGameSceneTrainingEnemySelectCancelLeavesSelectionUnchanged()
 	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
 	playdate.getSystemMenu():getMenuItems()[1].callback() -- -> EnemySelectScene
@@ -421,6 +473,23 @@ function TestSceneFlow:testGameSceneTrainingUpgradeTestApplyAppliesAndReturns()
 
 	lu.assertEquals(currentClassName(), "GameSceneTraining")
 	lu.assertEquals(Config.SHIP_ACCEL, before * 1.25)
+end
+
+-- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
+-- UpgradeTestScene.CRANK_DEGREES_PER_ITEM).
+function TestSceneFlow:testGameSceneTrainingUpgradeTestCrankScroll()
+	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
+	playdate.getSystemMenu():getMenuItems()[2].callback() -- -> UpgradeTestScene
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.selected, 1)
+
+	Noble.Input.fire("cranked", 57) -- 2 full items (40 deg) + 17 deg leftover
+	lu.assertEquals(scene.selected, 3)
+	lu.assertEquals(scene.crankAccum, 17)
+
+	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one item back, 0 leftover
+	lu.assertEquals(scene.selected, 2)
+	lu.assertEquals(scene.crankAccum, 0)
 end
 
 function TestSceneFlow:testGameSceneTrainingUpgradeTestCancelAppliesNothing()
@@ -514,6 +583,24 @@ function TestSceneFlow:testUpgradeSelectWithoutWindStepGoesStraightToGameSceneMa
 	lu.assertEquals(currentClassName(), "GameSceneMain")
 	lu.assertEquals(Noble.currentScene().level, 2)
 	lu.assertEquals(Noble.currentScene().score, 5)
+end
+
+-- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
+-- UpgradeSelectScene.CRANK_DEGREES_PER_ITEM) and confirms it stops moving the
+-- selection once phase == "result" (moveSelection's own guard).
+function TestSceneFlow:testUpgradeSelectCrankScrollAndStopsAfterResult()
+	Noble.transition(UpgradeSelectScene, nil, nil, nil, { level = 2, completedLevel = 1, totalDefeated = 0 })
+	local scene = Noble.currentScene()
+	lu.assertEquals(scene.selected, 1)
+
+	Noble.Input.fire("cranked", 20)
+	lu.assertEquals(scene.selected, 2)
+
+	Noble.Input.fire("AButtonDown") -- select -> result
+	lu.assertEquals(scene.phase, "result")
+
+	Noble.Input.fire("cranked", 20) -- no-op once in "result" phase
+	lu.assertEquals(scene.selected, 2)
 end
 
 function TestSceneFlow:testUpgradeSelectWithWindStepGoesToWindShiftScene()

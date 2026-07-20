@@ -5,8 +5,9 @@
 -- rendered via MenuCard (source/scripts/utilities/MenuCard.lua), the same
 -- list+description card layout UpgradeTestScene uses; the "result" phase
 -- (before/after summary once Ⓐ is pressed) is its own simple centered
--- playout tree, since it has no list to lay out. Up/Down move the
--- highlight, Ⓐ applies the highlighted upgrade (via Config.applyUpgrade)
+-- playout tree, since it has no list to lay out. Up/Down (or the crank,
+-- while in the "select" phase) move the highlight, Ⓐ applies the
+-- highlighted upgrade (via Config.applyUpgrade)
 -- and swaps to the before/after summary; a second Ⓐ continues on to
 -- WindShiftScene or straight back to self.gameScene (see
 -- GameSceneMain.gameSceneClass), mirroring LevelCompleteScene's own
@@ -40,9 +41,14 @@ local MENU_FONT = nil
 ---@field upgrade Config.Upgrade set once phase == "result"
 ---@field oldValue number set once phase == "result"
 ---@field newValue number set once phase == "result"
+---@field crankAccum number leftover crank degrees not yet converted into a selection move, see the cranked handler
 UpgradeSelectScene = class("UpgradeSelectScene").extends(NobleScene) or UpgradeSelectScene
 
 local scene = nil
+
+-- Degrees of crank rotation that moves the highlight by one item, same idea
+-- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
+local CRANK_DEGREES_PER_ITEM = 20
 
 -- Draws `count` distinct entries from Config.UPGRADES without replacement
 -- (falls back to fewer if the pool is smaller than `count`). Entries with an
@@ -105,6 +111,7 @@ function UpgradeSelectScene:init(sceneProperties)
 	self.upgrades = pickUpgrades(3)
 	self.selected = 1
 	self.phase = "select" -- "select" -> "result"
+	self.crankAccum = 0
 
 	-- Built here rather than in :start() -- Noble may call :update() during
 	-- the tail of the transition in, before :start() fires (see GameScene's
@@ -161,6 +168,23 @@ UpgradeSelectScene.inputHandler = {
 				totalDefeated = scene.totalDefeated,
 				gameScene = scene.gameScene,
 			})
+		end
+	end,
+	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
+	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in
+	-- either direction (a no-op once phase == "result", same as
+	-- moveSelection). crankAccum carries leftover sub-threshold rotation
+	-- between calls.
+	cranked = function(change)
+		if not scene then return end
+		scene.crankAccum = scene.crankAccum + change
+		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+			moveSelection(1)
+			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+		end
+		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+			moveSelection(-1)
+			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

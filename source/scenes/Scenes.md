@@ -67,7 +67,7 @@ Start screen — the game's entry point (`main.lua` calls
 [playout](../libraries/playout.lua).
 
 - **Reached from:** app launch only.
-- **Controls:** Up/Down move the highlight (wraps); A or B confirms.
+- **Controls:** Up/Down (or the crank) move the highlight (wraps); A or B confirms.
 - **Menu items → transitions:**
   - "Play" → `GameSceneMain` (or `GameSceneDemo`, if `Config.DEMO_MODE` is on)
   - "Training" → `GameSceneTraining`
@@ -172,9 +172,9 @@ Reached only from `GameSceneTraining`'s system-menu item. Lists every entry in
 one.
 
 - **Reached from:** `GameSceneTraining` (system menu "Select Enemy").
-- **Controls:** Up/Down move the highlight (wraps, defaults to whatever
-  `GameSceneTraining.selectedEnemyType` currently is); A confirms and returns; B
-  cancels and returns without changing the selection.
+- **Controls:** Up/Down (or the crank) move the highlight (wraps, defaults to
+  whatever `GameSceneTraining.selectedEnemyType` currently is); A confirms and
+  returns; B cancels and returns without changing the selection.
 - **sceneProperties read:** none (reads `GameSceneTraining.selectedEnemyType`
   directly).
 - **Transitions out:** A or B → `Noble.transition(GameSceneTraining)` (A also
@@ -191,10 +191,11 @@ sandbox. Unlike `UpgradeSelectScene`, applying goes straight back to
 reopened repeatedly to stack several picks in a row.
 
 - **Reached from:** `GameSceneTraining` (system menu "Test Upgrade").
-- **Controls:** Up/Down move the highlight (wraps, always starts at the first
-  entry — there's no "current pick" to remember, unlike `EnemySelectScene`);
-  A applies the highlighted upgrade (via `Config.applyUpgrade`) and returns;
-  B cancels and returns without applying anything.
+- **Controls:** Up/Down (or the crank) move the highlight (wraps, always
+  starts at the first entry — there's no "current pick" to remember, unlike
+  `EnemySelectScene`); A applies the highlighted upgrade (via
+  `Config.applyUpgrade`) and returns; B cancels and returns without applying
+  anything.
 - **sceneProperties read:** none.
 - **Transitions out:** A or B → `Noble.transition(GameSceneTraining)` (A also
   calls `Config.applyUpgrade` first).
@@ -272,9 +273,9 @@ covering all of `Config.lua`:
 Built with [playout](../libraries/playout.lua).
 
 - **Reached from:** `TitleScene` ("Settings"); `TuningScene` (B).
-- **Controls:** Up/Down move the highlight (wraps); Left/Right cycle the
-  Song row or adjust the Volume row (a no-op on HUD/Tuning rows); A toggles
-  the highlighted HUD setting or activates the Tuning row (a no-op on
+- **Controls:** Up/Down (or the crank) move the highlight (wraps); Left/Right
+  cycle the Song row or adjust the Volume row (a no-op on HUD/Tuning rows); A
+  toggles the highlighted HUD setting or activates the Tuning row (a no-op on
   Sound rows); B returns to `TitleScene`.
 - **sceneProperties read:** none.
 
@@ -338,9 +339,9 @@ decides whether the run continues straight back into `self.gameScene` or
 detours through `WindShiftScene` first.
 
 - **Reached from:** `LevelCompleteScene`.
-- **Controls:** Up/Down move the highlight (`"select"` phase only); A
-  applies the highlighted upgrade (via `Config.applyUpgrade`) and swaps to
-  the result screen; a second A continues on.
+- **Controls:** Up/Down (or the crank) move the highlight (`"select"` phase
+  only); A applies the highlighted upgrade (via `Config.applyUpgrade`) and
+  swaps to the result screen; a second A continues on.
 - **sceneProperties read:** `level` (default 1), `completedLevel` (default
   `level - 1`), `totalDefeated` (default 0), `gameScene` (default
   `GameSceneMain`).

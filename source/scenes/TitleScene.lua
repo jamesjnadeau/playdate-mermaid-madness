@@ -1,6 +1,6 @@
 -- TitleScene.lua
--- Start screen: Up/Down pick a scene, A or B confirms. Rendered with the playout
--- UI library, see libraries/playout.lua.
+-- Start screen: Up/Down (or the crank) pick a scene, A or B confirms.
+-- Rendered with the playout UI library, see libraries/playout.lua.
 
 import "scripts/utilities/Config"
 import "scripts/utilities/Sound"
@@ -12,9 +12,14 @@ local gfx <const> = playdate.graphics
 ---@field selected integer index into MENU_ITEMS
 ---@field lightningPlayed boolean set once Sound.playLightning has fired for this visit, so it plays exactly once right before the menu appears
 ---@field menuImg _Image drawn image of the menu card for the current selection, see rebuildMenu()
+---@field crankAccum number leftover crank degrees not yet converted into a menu move, see the cranked handler
 TitleScene = class("TitleScene").extends(NobleScene) or TitleScene
 
 local scene = nil
+
+-- Degrees of crank rotation that moves the highlight by one item, same idea
+-- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
+local CRANK_DEGREES_PER_ITEM = 20
 
 -- Splash art, full-screen background behind the menu. Pre-dithered at
 -- 400x240 (see art-src/title-hero.png for the hi-res original) so pdc's
@@ -65,6 +70,7 @@ function TitleScene:init(...)
 	self.t = 0
 	self.selected = 2
 	self.lightningPlayed = false
+	self.crankAccum = 0
 	self:rebuildMenu()
 end
 
@@ -100,21 +106,34 @@ local function confirmSelection()
 	end
 end
 
+---@param delta integer
+local function moveSelection(delta)
+	if not scene then return end
+	scene.selected = ((scene.selected - 1 + delta) % #MENU_ITEMS) + 1
+	scene:rebuildMenu()
+end
+
 TitleScene.inputHandler = {
-	upButtonDown = function()
-		if not scene then return end
-		scene.selected = scene.selected - 1
-		if scene.selected < 1 then scene.selected = #MENU_ITEMS end
-		scene:rebuildMenu()
-	end,
-	downButtonDown = function()
-		if not scene then return end
-		scene.selected = scene.selected + 1
-		if scene.selected > #MENU_ITEMS then scene.selected = 1 end
-		scene:rebuildMenu()
-	end,
+	upButtonDown = function() moveSelection(-1) end,
+	downButtonDown = function() moveSelection(1) end,
 	AButtonDown = function() confirmSelection() end,
 	BButtonDown = function() confirmSelection() end,
+	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
+	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in
+	-- either direction. crankAccum carries leftover sub-threshold rotation
+	-- between calls.
+	cranked = function(change)
+		if not scene then return end
+		scene.crankAccum = scene.crankAccum + change
+		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+			moveSelection(1)
+			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+		end
+		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+			moveSelection(-1)
+			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
+		end
+	end,
 }
 
 function TitleScene:update()
