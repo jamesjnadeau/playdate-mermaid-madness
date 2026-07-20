@@ -122,6 +122,20 @@ function GameSceneMain:enemyDefeated()
 	self.levelKills = self.levelKills + 1
 end
 
+-- Drifts the ship onward at its last heading, easing speed down with the
+-- same water friction as normal play (see Ship:updateSpeed), instead of
+-- snapping motionless the instant levelComplete skips the rest of tickGame
+-- below -- called each tick during the level-complete hold so the ship
+-- visibly coasts to a stop rather than freezing mid-glide.
+---@param dt number
+function GameSceneMain:coastShip(dt)
+	local ship = self.ship
+	ship.speed = math.max(0, ship.speed - ship.speed * Config.SHIP_WATER_FRICTION * dt)
+	local hx, hy = Utils.heading(ship.heading)
+	ship.x = ship.x + hx * ship.speed * dt
+	ship.y = ship.y + hy * ship.speed * dt
+end
+
 -- Level clears once enough enemies have been defeated. Gameplay freezes
 -- immediately (the levelComplete guard below skips the super call), but
 -- onLevelComplete doesn't fire until levelCompleteTimer counts down from
@@ -129,6 +143,7 @@ end
 -- it fires so this only ever happens once per level, even with a delay of 0.
 function GameSceneMain:tickGame()
 	if self.levelComplete then
+		self:coastShip(Config.DT)
 		if self.levelCompleteTimer ~= nil then
 			self.levelCompleteTimer = self.levelCompleteTimer - Config.DT
 			if self.levelCompleteTimer <= 0 then

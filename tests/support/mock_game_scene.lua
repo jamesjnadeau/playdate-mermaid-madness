@@ -16,11 +16,12 @@
 -- spawnEnemy's cap/forced-type logic, and the tickGame hook GameSceneMain/
 -- InstructionsScene layer their own level-clear/step-spawn logic onto.
 -- Rendering (:render/:drawHUD/:drawModeStatus/:drawGameOver) is a no-op --
--- this suite checks scene transitions and state, not pixels. Note self.ship
--- here is just `{ steer = function() end }`, with no x/y/heading -- fine as
--- long as no test calls :update() (which nothing currently does), since
--- that's the only path that reaches InstructionsScene:spawnDummyTarget, the
--- one place that'd need real ship coordinates.
+-- this suite checks scene transitions and state, not pixels. self.ship here
+-- carries just enough (x/y/heading/speed, all zeroed, plus a no-op steer) to
+-- satisfy GameSceneMain:coastShip during the level-complete hold -- no test
+-- calls the real Ship:update() (which nothing currently does), since that's
+-- the only path that reaches InstructionsScene:spawnDummyTarget, the one
+-- place that'd need real ship coordinates.
 
 GameScene = {}
 class("GameScene").extends(NobleScene)
@@ -51,7 +52,7 @@ end
 
 function GameScene:resetGame(sceneProperties)
 	sceneProperties = sceneProperties or {}
-	self.ship = { steer = function() end }
+	self.ship = { x = 0, y = 0, heading = 0, speed = 0, steer = function() end }
 	self.enemies = {}
 	self.elapsed = 0
 	self.score = sceneProperties.totalDefeated or 0
