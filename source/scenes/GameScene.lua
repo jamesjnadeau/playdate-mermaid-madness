@@ -554,15 +554,13 @@ function GameScene:tickGame()
 
 	self:updateSpawning(dt)
 
-	-- Enemies chase; check ramming.
+	-- Enemies chase; check ramming. Ramming only damages the player -- an
+	-- enemy is never defeated by hull contact, only by a tridentball/Storm
+	-- Cloud hit (see the tridentball loop below and updateStormClouds above).
 	local ship = self.ship
-	for i = #self.enemies, 1, -1 do
-		local e = self.enemies[i]
+	for _, e in ipairs(self.enemies) do
 		e:update(ship.x, ship.y, self.windDirection, self.windSpeed)
 		if Utils.dist(e.x, e.y, ship.x, ship.y) < (Config.SHIP_COLLIDE_RADIUS + e.radius) then
-			self:addExplosion(e)
-			table.remove(self.enemies, i)
-			self:enemyDefeated()
 			if ship:hit(e.damage) and ship.health <= 0 then
 				self.gameOver = true
 			end
