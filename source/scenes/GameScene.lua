@@ -1008,8 +1008,24 @@ function GameScene:drawWindIndicator()
 	end
 	if Config.HUD_SHOW_WIND_DIRECTION then
 		gfx.drawCircleAtPoint(cx, cy, Config.WIND_INDICATOR_CIRCLE_SIZE)
-		self:drawArrow(cx, cy, self.windDirection, Config.WIND_INDICATOR_SIZE)
+		self:drawSolidArrow(cx, cy, self.windDirection, Config.WIND_INDICATOR_SIZE)
 	end
+end
+
+-- Solid (filled) version of drawArrow, used for the wind indicator so it
+-- reads as a pointer rather than a wireframe triangle.
+---@param px number
+---@param py number
+---@param angleDeg number
+---@param size number
+function GameScene:drawSolidArrow(px, py, angleDeg, size)
+	local hx, hy = Utils.heading(angleDeg)
+	-- perpendicular
+	local rx, ry = -hy, hx
+	local tipx, tipy = px + hx * size, py + hy * size
+	local b1x, b1y = px - hx * size * 0.4 + rx * size * 0.6, py - hy * size * 0.4 + ry * size * 0.6
+	local b2x, b2y = px - hx * size * 0.4 - rx * size * 0.6, py - hy * size * 0.4 - ry * size * 0.6
+	gfx.fillPolygon(tipx, tipy, b1x, b1y, b2x, b2y)
 end
 
 function GameScene:drawGameOver()
