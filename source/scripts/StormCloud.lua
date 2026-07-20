@@ -16,7 +16,10 @@ local gfx <const> = playdate.graphics
 
 -- Cloud artwork, drawn at Config.STORM_CLOUD_WIDTH x STORM_CLOUD_HEIGHT (see
 -- StormCloud:draw) rather than at this file's native size -- see
--- art-src/cloud.png for the hi-res original.
+-- art-src/cloud.png for the hi-res original. That original's fill is a
+-- near-white gray (242/255) that pdc's 1-bit dither would render as almost
+-- solid white; storm-cloud.png recolors the fill to 50% gray first so it
+-- dithers to a visibly gray checkerboard instead.
 local cloudImage = gfx.image.new("assets/images/storm-cloud")
 local cloudImageWidth, cloudImageHeight = cloudImage:getSize()
 
