@@ -5,3 +5,4 @@ bundleID=com.jaemsjnadeau.mermaidmadness
 version=0.1
 buildNumber=1
 imagePath=assets/launcher
+launchSoundPath=assets/sounds/effects/intro-thunder-clap
