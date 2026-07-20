@@ -35,19 +35,36 @@ local heroImage = gfx.image.new("assets/images/title-hero")
 -- doesn't matter.
 local MENU_ITEMS = { "Play", "Training", "Instructions", "Settings" }
 
-local MENU_PADDING = 20
+-- Bolt flanking the selected item. Playdate's built-in system font has no
+-- glyph for "⚡" itself -- a plain text decoration silently drops the
+-- character -- so this is a pre-rendered image instead; see
+-- tools/render-lightning-icon.sh for how it's generated.
+local lightningIcon = gfx.image.new("assets/images/lightning-icon")
+assert(lightningIcon, "missing assets/images/lightning-icon")
+local ICON_W, ICON_H = lightningIcon.width, lightningIcon.height
 
--- Fixed outer card width, wide enough for the widest item once decorated
--- with "> <" (whichever item that ends up being selected). Without this,
--- the card auto-sizes to its content and its width would shift every time
--- selection moves onto or off of the widest item -- see buildTree() below.
-local MENU_CARD_WIDTH
-do
-	local widestLabel = 0
-	for _, label in ipairs(MENU_ITEMS) do
-		widestLabel = math.max(widestLabel, gfx.getTextSize("> " .. label .. " <"))
-	end
-	MENU_CARD_WIDTH = widestLabel + MENU_PADDING * 2
+-- Every row gets an icon-sized slot on each side of its label, whether or
+-- not that row is selected (a same-size empty box standing in for the icon
+-- when it's not) -- see buildRow() below. That keeps each row's width/height
+-- contribution from the flanks constant across selection changes, so the
+-- card never resizes as the highlight moves, even onto/off of the widest
+-- item.
+---@return table playout node
+local function iconSlot()
+	return playout.box.new({ width = ICON_W, height = ICON_H })
+end
+
+---@param label string
+---@param isSelected boolean
+---@return table playout node
+local function buildRow(label, isSelected)
+	local leftIcon = isSelected and playout.image.new(lightningIcon) or iconSlot()
+	local rightIcon = isSelected and playout.image.new(lightningIcon) or iconSlot()
+	return playout.box.new({ direction = playout.kDirectionHorizontal, spacing = 4 }, {
+		leftIcon,
+		playout.text.new(label, { alignment = kTextAlignment.center }),
+		rightIcon,
+	})
 end
 
 -- Only depends on `selected`, so it's rebuilt on demand (see rebuildMenu())
@@ -58,15 +75,13 @@ end
 local function buildTree(selected)
 	local menuChildren = {}
 	for i, label in ipairs(MENU_ITEMS) do
-		local text = (i == selected) and ("> " .. label .. " <") or label
-		menuChildren[i] = playout.text.new(text, { alignment = kTextAlignment.center })
+		menuChildren[i] = buildRow(label, i == selected)
 	end
 
 	local root = playout.box.new({
 		direction = playout.kDirectionVertical,
 		spacing = 20,
-		padding = MENU_PADDING,
-		width = MENU_CARD_WIDTH,
+		padding = 20,
 		hAlign = playout.kAlignCenter,
 		-- Opaque card (rather than drawing straight over the art) so the menu
 		-- text stays legible regardless of what's dithered underneath it.

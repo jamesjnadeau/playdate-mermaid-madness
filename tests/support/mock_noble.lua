@@ -172,6 +172,11 @@ function playout.text.new(content, properties)
 	return { kind = "text", content = content, properties = properties or {} }
 end
 
+playout.image = {}
+function playout.image.new(img, properties)
+	return { kind = "image", img = img, properties = properties or {} }
+end
+
 local fakeLayoutRect = { x = 0, y = 0, width = 0, height = 0 }
 
 playout.box = {}
