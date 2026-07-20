@@ -197,6 +197,18 @@ Config.STORM_CLOUD_FOLLOW_DISTANCE = 60 -- px; leash radius around the player fo
 Config.STORM_CLOUD_WANDER_MIN_INTERVAL = 1 -- seconds; shortest time before picking a new wander heading
 Config.STORM_CLOUD_WANDER_MAX_INTERVAL = 3 -- seconds; longest time before picking a new wander heading
 
+-- Idle-only failsafe: a cloud that's been trudging back toward the player
+-- (the FOLLOW_DISTANCE case above) instead teleports once it's this far
+-- away -- e.g. it wandered off while the player sailed away in the
+-- meantime -- rather than spending ages walking the whole distance back at
+-- STORM_CLOUD_SPEED. Lands at a random point LAND_MIN..LAND_MAX from the
+-- player, the same "just beyond the screen's corner" idea as
+-- GameScene:spawnEnemy's enemy spawn point, so it reappears out of sight
+-- instead of popping in on screen.
+Config.STORM_CLOUD_TELEPORT_DISTANCE = 500 -- px; no-enemy distance from the player that triggers a teleport
+Config.STORM_CLOUD_TELEPORT_LAND_MIN = 250 -- px; nearest the teleport can land from the player
+Config.STORM_CLOUD_TELEPORT_LAND_MAX = 300 -- px; farthest the teleport can land from the player
+
 -- Lightning flash: between strikes the cloud draws as its normal image; a
 -- strike briefly flashes it to solid white, then solid black, then back to
 -- normal (see StormCloud:draw). STEP_DURATION is how long each of those two

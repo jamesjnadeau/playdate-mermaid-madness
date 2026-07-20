@@ -42,6 +42,21 @@ local function nextWanderInterval()
 		+ math.random() * (Config.STORM_CLOUD_WANDER_MAX_INTERVAL - Config.STORM_CLOUD_WANDER_MIN_INTERVAL)
 end
 
+-- Random point between minDist and maxDist from (cx, cy), used to land a
+-- teleporting cloud just offscreen -- see the "Idle-only failsafe" comment
+-- in Config.lua and StormCloud:update.
+---@param cx number
+---@param cy number
+---@param minDist number
+---@param maxDist number
+---@return number x
+---@return number y
+local function randomPointNear(cx, cy, minDist, maxDist)
+	local hx, hy = Utils.heading(math.random() * 360)
+	local dist = minDist + math.random() * (maxDist - minDist)
+	return cx + hx * dist, cy + hy * dist
+end
+
 ---@class StormCloud : _Object
 ---@field x number
 ---@field y number
@@ -70,11 +85,14 @@ end
 -- within Config.STORM_CLOUD_FOLLOW_DISTANCE, at which point the cloud
 -- wanders in a random heading (re-rolled every STORM_CLOUD_WANDER_MIN/MAX_INTERVAL
 -- seconds) instead of just sitting still -- drifting back out past
--- FOLLOW_DISTANCE while wandering resumes following. Also counts down
--- damageTimer -- GameScene checks/resets it and applies the actual damage
--- once it elapses (see updateStormClouds), the same split of duties as
--- Tridentball's self.life/self.dead and GameScene's tridentball collision
--- loop.
+-- FOLLOW_DISTANCE while wandering resumes following. If it's fallen even
+-- further behind -- past STORM_CLOUD_TELEPORT_DISTANCE -- it teleports to a
+-- random point just offscreen of the player instead of trudging the whole
+-- way back (see the "Idle-only failsafe" comment in Config.lua). Also
+-- counts down damageTimer -- GameScene checks/resets it and applies the
+-- actual damage once it elapses (see updateStormClouds), the same split of
+-- duties as Tridentball's self.life/self.dead and GameScene's tridentball
+-- collision loop.
 ---@param enemies Enemy[]
 ---@param playerX number
 ---@param playerY number
@@ -93,19 +111,27 @@ function StormCloud:update(enemies, playerX, playerY, dt)
 	local dir
 	if best then
 		dir = Utils.angleTo(self.x, self.y, best.x, best.y)
-	elseif Utils.dist(self.x, self.y, playerX, playerY) > Config.STORM_CLOUD_FOLLOW_DISTANCE then
-		dir = Utils.angleTo(self.x, self.y, playerX, playerY)
 	else
-		self.wanderTimer = self.wanderTimer - dt
-		if self.wanderTimer <= 0 then
-			self.wanderAngle = math.random() * 360
-			self.wanderTimer = nextWanderInterval()
+		local distToPlayer = Utils.dist(self.x, self.y, playerX, playerY)
+		if distToPlayer > Config.STORM_CLOUD_TELEPORT_DISTANCE then
+			self.x, self.y = randomPointNear(playerX, playerY,
+				Config.STORM_CLOUD_TELEPORT_LAND_MIN, Config.STORM_CLOUD_TELEPORT_LAND_MAX)
+		elseif distToPlayer > Config.STORM_CLOUD_FOLLOW_DISTANCE then
+			dir = Utils.angleTo(self.x, self.y, playerX, playerY)
+		else
+			self.wanderTimer = self.wanderTimer - dt
+			if self.wanderTimer <= 0 then
+				self.wanderAngle = math.random() * 360
+				self.wanderTimer = nextWanderInterval()
+			end
+			dir = self.wanderAngle
 		end
-		dir = self.wanderAngle
 	end
-	local hx, hy = Utils.heading(dir)
-	self.x = self.x + hx * Config.STORM_CLOUD_SPEED * dt
-	self.y = self.y + hy * Config.STORM_CLOUD_SPEED * dt
+	if dir then
+		local hx, hy = Utils.heading(dir)
+		self.x = self.x + hx * Config.STORM_CLOUD_SPEED * dt
+		self.y = self.y + hy * Config.STORM_CLOUD_SPEED * dt
+	end
 
 	self.damageTimer = self.damageTimer - dt
 
