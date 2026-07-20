@@ -93,6 +93,6 @@ end)
 -- Boot the engine.
 -- Add a short delay (e.g., 2 frames) before starting the first scene
 playdate.timer.performAfterDelay(2, function()
-	Noble.new(StartScene, 3, Noble.TransitionType.DIP_TO_BLACK)
+	Noble.new(StartScene, 3, Noble.Transition.DipToBlack)
 end)
 
