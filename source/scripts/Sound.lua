@@ -1,9 +1,12 @@
 -- Sound.lua
--- Procedurally synthesized sound effects. The game ships no audio assets --
--- everything here is built from playdate.sound.synth/twopolefilter/envelope
--- at import time and retriggered on demand, rather than sample playback.
+-- Catalog of gameplay sound effects, called by name from scenes/scripts.
+-- Two kinds: procedurally synthesized (playdate.sound.synth/twopolefilter/
+-- envelope, built once at import time and retriggered on demand) and, below,
+-- sampled one-shots played through a SoundBank (source/assets/sounds,
+-- rendered from art-src/sounds by tools/render-sfx.sh -- see SoundBank.lua).
 
 import "scripts/Config"
+import "scripts/SoundBank"
 
 local snd <const> = playdate.sound
 
@@ -42,4 +45,15 @@ whooshFilter:setFrequencyMod(whooshSweep)
 function Sound.playTridentWhoosh()
 	whooshSweep:trigger(1, Config.SOUND_WHOOSH_LENGTH)
 	whooshSynth:playNote("C4", Config.SOUND_WHOOSH_VOLUME, Config.SOUND_WHOOSH_LENGTH)
+end
+
+-- Enemy taking damage: a handful of recorded hit-impact variations (see
+-- source/assets/sounds/enemy/hit), picked at random by SoundBank so
+-- repeated hits don't all sound identical.
+local enemyHitSounds = SoundBank("assets/sounds/enemy/hit")
+
+-- Plays a random enemy-hit sound. Call whenever an enemy's health drops from
+-- taking damage (see GameScene's tridentball and StormCloud hit handling).
+function Sound.playEnemyHit()
+	enemyHitSounds:playRandom()
 end

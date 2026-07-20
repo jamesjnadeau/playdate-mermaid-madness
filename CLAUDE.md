@@ -114,6 +114,27 @@ raw PCM output first (`ffmpeg -f segment -c copy`, lossless, no predictor
 state involved) and only then ADPCM-encoding each piece on its own, so every
 piece's predictor starts fresh at silence instead of some mid-song value.
 
+## Sampled sound effects: SoundBank
+
+`source/scripts/SoundBank.lua` plays a random sound from a folder of
+pre-compiled audio, e.g. a handful of enemy-hit variations so repeated hits
+don't all sound identical (see `Sound.playEnemyHit`, called from
+`GameScene.lua`'s tridentball and StormCloud hit handling). It's a class
+(`SoundBank(dir)`), not a singleton like `MusicPlayer` — instantiate one per
+folder under `assets/sounds/`. Unlike `MusicPlayer`'s streamed
+`playdate.sound.fileplayer` (built for long songs), `SoundBank` uses
+`playdate.sound.sampleplayer`, which decompresses the whole clip into memory
+up front — appropriate for short one-shots, not something you'd want for a
+multi-minute song.
+
+Raw source audio lives in `art-src/sounds/<group>/<name>.<ext>` (whatever
+format, e.g. `.mp3`); `tools/render-sfx.sh` converts a folder of it into
+compiled-ready `.wav` under `source/assets/sounds/<group>/<name>.wav` (pdc
+auto-compiles those into `.pda` at build time, same as songs/images). To add
+a new sound bank: drop source files in a new `art-src/sounds/<group>/`
+folder, run `tools/render-sfx.sh art-src/sounds/<group>`, then
+`SoundBank("assets/sounds/<group>")` and call `:playRandom()`.
+
 ## `tests/`
 
 Plain-`lua5.4` unit tests — no Playdate SDK or Simulator involved. Two tiers:
@@ -248,3 +269,13 @@ so a stale diagram and a stale test tend to go stale together — update both.
   straight to `source/assets/songs/<song name>/` (~20MB for the bundled
   Mozart movement) rather than gitignored/regenerated in CI — rerun the
   script by hand if the source `.mid` changes.
+- **`render-sfx.sh <input-dir> [output-dir]`** — converts a directory tree of
+  source sound effects (any format `ffmpeg` reads, e.g. `art-src/sounds/**/*.mp3`)
+  into mono, 44.1kHz ADPCM `.wav` files under `source/assets/sounds/`, one
+  output file per input file, preserving the input's subdirectory structure.
+  Simpler cousin of `render-song.sh`: no MIDI synthesis or piece-splitting,
+  since each sound effect is already a short, standalone clip. Defaults the
+  output dir to the input's own path under `source/assets/sounds` (e.g.
+  `art-src/sounds/enemy/hit` → `source/assets/sounds/enemy/hit`), so the
+  common case needs no second argument. Requires `ffmpeg` on `PATH`. See
+  `SoundBank.lua` below for how the converted folders get played back.

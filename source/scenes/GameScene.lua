@@ -381,6 +381,7 @@ function GameScene:updateStormClouds(dt)
 				local e = self.enemies[i]
 				if Utils.dist(cloud.x, cloud.y, e.x, e.y) < (Config.STORM_CLOUD_RADIUS + e.radius) then
 					e:hit(Config.STORM_CLOUD_DAMAGE)
+					Sound.playEnemyHit()
 					if not e.alive then
 						self:addExplosion(e)
 						table.remove(self.enemies, i)
@@ -577,6 +578,7 @@ function GameScene:tickGame()
 			local e = self.enemies[j]
 			if Utils.dist(b.x, b.y, e.x, e.y) < (b.radius + e.radius) then
 				e:hit(b.damage)
+				Sound.playEnemyHit()
 				hit = true
 				if not e.alive then
 					self:addExplosion(e)

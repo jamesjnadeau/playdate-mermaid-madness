@@ -234,6 +234,11 @@ Config.SOUND_WHOOSH_SWEEP_DECAY   = 0.22  -- seconds for the filter sweep to fal
 Config.SOUND_WHOOSH_SWEEP_MIN_HZ  = 300   -- filter center frequency at the start/end of the sweep
 Config.SOUND_WHOOSH_SWEEP_RANGE_HZ = 2200 -- how far above SWEEP_MIN_HZ the sweep peaks
 
+-- Sampled one-shot SFX played via SoundBank (source/assets/sounds, rendered
+-- from art-src/sounds by tools/render-sfx.sh) -- distinct from the
+-- synthesized whoosh above.
+Config.SOUND_SFX_VOLUME = 0.7 -- 0-1, applied to every SoundBank on load
+
 -----------
 -- Music --
 -----------
