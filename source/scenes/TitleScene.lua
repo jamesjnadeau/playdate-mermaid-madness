@@ -62,7 +62,7 @@ local function buildTree(selected, showPrompt)
 		borderRadius = 6,
 	}, {
 		playout.text.new("* Mermaid Madness *", { alignment = kTextAlignment.center }),
-		playout.text.new("a Playdate pirate voyage", { alignment = kTextAlignment.center }),
+		-- playout.text.new("Zeus and Posiden use you to dual.", { alignment = kTextAlignment.center }),
 		playout.box.new({ direction = playout.kDirectionVertical, spacing = 4 }, menuChildren),
 		-- Toggling color (rather than adding/removing this node) keeps the
 		-- blink from shifting the rest of the layout.

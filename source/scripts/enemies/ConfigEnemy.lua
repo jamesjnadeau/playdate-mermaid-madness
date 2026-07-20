@@ -46,6 +46,12 @@ Config.ENEMY_TELEPORT_WARN_TIME = 3     -- seconds of countdown warning before r
 Config.ENEMY_HEALTH_BAR_WIDTH  = 20  -- px wide
 Config.ENEMY_HEALTH_BAR_HEIGHT = 3   -- px tall
 Config.ENEMY_HEALTH_BAR_MARGIN = 4   -- px gap between the hull's collision radius and the bar's top edge
+-- Extra px added past self.radius (the collision radius) before the margin,
+-- for enemies whose drawn shape reaches farther than their collision radius
+-- (e.g. a bill or direction dots that don't count toward collision) -- see
+-- Enemy.healthBarOffset / Enemy:drawHealthBar. 0 for the base enemy, whose
+-- hull barely exceeds its collision radius.
+Config.ENEMY_HEALTH_BAR_OFFSET = 0
 
 -- Difficulty ramp: spawn interval shrinks from START to FLOOR over RAMP seconds
 Config.SPAWN_INTERVAL_START = 2.6
@@ -75,6 +81,11 @@ Config.ENEMY_SWORDFISH_COLOR      = gfx.kColorBlack
 Config.ENEMY_SWORDFISH_OUTLINE_COLOR = gfx.kColorWhite -- distinguishes it from the base enemy's silhouette at a glance
 Config.ENEMY_SWORDFISH_EYE_OFFSET = 4   -- px the eye dot sits ahead of center, scaled down to match its smaller hull
 Config.ENEMY_SWORDFISH_MIN_LEVEL  = 3   -- unlocked starting this level (appears after level 2) -- see Config.ENEMY_MIN_LEVEL
+-- The bill tip (bow point of the hull) sits BILL_LENGTH past the body, but
+-- ENEMY_SWORDFISH_RADIUS (the collision radius) only counts half of that --
+-- see Enemy.healthBarOffset -- so nudge the health bar out by the other half
+-- to clear the bill tip when it's pointed toward the bar.
+Config.ENEMY_SWORDFISH_HEALTH_BAR_OFFSET = Config.ENEMY_SWORDFISH_BILL_LENGTH / 2
 
 ------------------------
 -- Enemy: Kraken --
@@ -98,5 +109,11 @@ Config.ENEMY_KRAKEN_WIND_MULTIPLIER = Config.ENEMY_WIND_MULTIPLIER
 Config.ENEMY_KRAKEN_COLOR      = gfx.kColorBlack
 Config.ENEMY_KRAKEN_OUTLINE_COLOR = gfx.kColorWhite
 Config.ENEMY_KRAKEN_MIN_LEVEL  = 4   -- unlocked starting this level, tougher than the swordfish -- see Config.ENEMY_MIN_LEVEL
+-- The direction-indicator dots are purely visual (ENEMY_KRAKEN_RADIUS, the
+-- collision radius, ignores them) but reach farther from center than the
+-- body itself -- see Enemy.healthBarOffset -- so nudge the health bar out by
+-- the difference to clear them regardless of which way the chevron is facing.
+Config.ENEMY_KRAKEN_HEALTH_BAR_OFFSET = (Config.ENEMY_KRAKEN_DOT_OFFSET + Config.ENEMY_KRAKEN_DOT_SPACING
+	+ Config.ENEMY_KRAKEN_DOT_RADIUS) - Config.ENEMY_KRAKEN_BODY_RADIUS
 
 return Config

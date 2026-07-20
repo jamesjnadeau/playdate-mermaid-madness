@@ -11,6 +11,7 @@ local gfx <const> = playdate.graphics
 ---@class Enemy : Ship
 ---@field radius number collision radius
 ---@field maxHealth number see Enemy:draw's health bar, shown once health < maxHealth
+---@field healthBarOffset number extra px past the collision radius before the health bar, see Enemy:drawHealthBar
 ---@field teleportWarning? number seconds left before relocation, nil when not pending -- see Enemy:updateLeash
 ---@field moveSpeed number
 ---@field accel number
@@ -45,6 +46,7 @@ function Enemy:init(x, y, heading)
 	self.color = gfx.kColorBlack
 	self.health = 1
 	self.maxHealth = self.health -- see Enemy:draw's health bar, shown once health < maxHealth
+	self.healthBarOffset = Config.ENEMY_HEALTH_BAR_OFFSET -- see Enemy:drawHealthBar; subclasses whose drawn shape reaches past self.radius (e.g. EnemyKraken's dots) override this
 	self.speed = 0
 	self.teleportWarning = nil -- seconds left before relocation; nil when not pending
 
@@ -156,11 +158,14 @@ end
 -- Small bar centered under the hull, only shown once damaged (see draw()
 -- above) -- white background with a black outline and a black fill
 -- proportional to health remaining, so it reads at a glance regardless of
--- what's behind the enemy.
+-- what's behind the enemy. Positioned self.radius (the collision radius)
+-- plus self.healthBarOffset below center, so it clears both the collision
+-- circle and any purely-visual parts (bill, direction dots) that reach
+-- farther -- see Enemy.healthBarOffset.
 function Enemy:drawHealthBar()
 	local w, h = Config.ENEMY_HEALTH_BAR_WIDTH, Config.ENEMY_HEALTH_BAR_HEIGHT
 	local x = self.x - w / 2
-	local y = self.y + self.radius + Config.ENEMY_HEALTH_BAR_MARGIN
+	local y = self.y + self.radius + self.healthBarOffset + Config.ENEMY_HEALTH_BAR_MARGIN
 
 	gfx.setColor(gfx.kColorWhite)
 	gfx.fillRect(x, y, w, h)

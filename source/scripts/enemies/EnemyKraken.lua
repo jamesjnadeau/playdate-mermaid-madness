@@ -29,6 +29,7 @@ function EnemyKraken:init(x, y, heading)
 	EnemyKraken.super.init(self, x, y, heading)
 
 	self.radius = Config.ENEMY_KRAKEN_RADIUS
+	self.healthBarOffset = Config.ENEMY_KRAKEN_HEALTH_BAR_OFFSET
 	self.length = Config.ENEMY_KRAKEN_BODY_RADIUS -- no hull polygon to size off of; only Ship:sternPosition/beamPosition read this, and neither is called on enemies
 	self.color = Config.ENEMY_KRAKEN_COLOR
 	self.outlineColor = Config.ENEMY_KRAKEN_OUTLINE_COLOR

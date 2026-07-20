@@ -26,6 +26,7 @@ function EnemySwordfish:init(x, y, heading)
 	EnemySwordfish.super.init(self, x, y, heading)
 
 	self.radius = Config.ENEMY_SWORDFISH_RADIUS
+	self.healthBarOffset = Config.ENEMY_SWORDFISH_HEALTH_BAR_OFFSET
 	self.length = Config.ENEMY_SWORDFISH_LENGTH
 	self.color = Config.ENEMY_SWORDFISH_COLOR
 	self.outlineColor = Config.ENEMY_SWORDFISH_OUTLINE_COLOR
