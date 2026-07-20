@@ -185,6 +185,14 @@ Config.STORM_CLOUD_RADIUS   = 40   -- px; damage-application radius, independent
 Config.STORM_CLOUD_WIDTH    = 80   -- px; drawn width of the cloud image (source/assets/images/storm-cloud.png)
 Config.STORM_CLOUD_HEIGHT   = 44   -- px; drawn height of the cloud image
 
+-- Lightning flash: between strikes the cloud draws as its normal image; a
+-- strike briefly flashes it to solid white, then solid black, then back to
+-- normal (see StormCloud:draw). STEP_DURATION is how long each of those two
+-- flash steps lasts; MIN/MAX_INTERVAL bound the random wait between strikes.
+Config.STORM_CLOUD_FLASH_MIN_INTERVAL = 2    -- seconds; shortest gap between flashes
+Config.STORM_CLOUD_FLASH_MAX_INTERVAL = 6    -- seconds; longest gap between flashes
+Config.STORM_CLOUD_FLASH_STEP_DURATION = 0.08 -- seconds each flash step (white, then black) lasts
+
 -----------
 -- Sound --
 -----------
