@@ -27,13 +27,12 @@ local heroImage = gfx.image.new("assets/images/title-hero")
 -- doesn't matter.
 local MENU_ITEMS = { "Play", "Training", "Instructions", "Settings" }
 
--- Rebuilt every frame from :update() -- the blinking prompt needs to redraw
--- regardless of whether the selection changed, and the tree is tiny enough
--- that rebuilding it outright is simpler than diffing what changed.
+-- Only depends on `selected`, so it's rebuilt on demand (see rebuildMenu())
+-- rather than every :update() frame -- nothing about the card changes
+-- frame-to-frame anymore now that the "Ⓐ to select" prompt doesn't blink.
 ---@param selected integer
----@param showPrompt boolean
 ---@return table playout tree
-local function buildTree(selected, showPrompt)
+local function buildTree(selected)
 	local menuChildren = {}
 	for i, label in ipairs(MENU_ITEMS) do
 		local text = (i == selected) and ("> " .. label .. " <") or label
@@ -54,12 +53,7 @@ local function buildTree(selected, showPrompt)
 		playout.text.new("* Mermaid Madness *", { alignment = kTextAlignment.center }),
 		-- playout.text.new("Zeus and Posiden use you to dual.", { alignment = kTextAlignment.center }),
 		playout.box.new({ direction = playout.kDirectionVertical, spacing = 4 }, menuChildren),
-		-- Toggling color (rather than adding/removing this node) keeps the
-		-- blink from shifting the rest of the layout.
-		playout.text.new("Ⓐ to select", {
-			alignment = kTextAlignment.center,
-			color = showPrompt and gfx.kColorBlack or gfx.kColorWhite,
-		}),
+		playout.text.new("Ⓐ to select", { alignment = kTextAlignment.center }),
 	})
 
 	return playout.tree.new(root)
@@ -72,6 +66,14 @@ function TitleScene:init(...)
 	self.t = 0
 	self.selected = 2
 	self.lightningPlayed = false
+	self:rebuildMenu()
+end
+
+-- Redraws the menu card image for the current selection. Only needs calling
+-- when self.selected changes (see the input handlers below) -- :update()
+-- just draws the cached self.menuImg every frame.
+function TitleScene:rebuildMenu()
+	self.menuImg = buildTree(self.selected):draw()
 end
 
 function TitleScene:start()
@@ -104,11 +106,13 @@ TitleScene.inputHandler = {
 		if not scene then return end
 		scene.selected = scene.selected - 1
 		if scene.selected < 1 then scene.selected = #MENU_ITEMS end
+		scene:rebuildMenu()
 	end,
 	downButtonDown = function()
 		if not scene then return end
 		scene.selected = scene.selected + 1
 		if scene.selected > #MENU_ITEMS then scene.selected = 1 end
+		scene:rebuildMenu()
 	end,
 	AButtonDown = function() confirmSelection() end,
 }
@@ -116,9 +120,6 @@ TitleScene.inputHandler = {
 function TitleScene:update()
 	TitleScene.super.update(self)
 	self.t = self.t + Config.DT
-
-	local showPrompt = math.floor(self.t * 2) % 2 == 0
-	local img = buildTree(self.selected, showPrompt):draw()
 
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 	heroImage:draw(0, 0)
@@ -132,6 +133,7 @@ function TitleScene:update()
 		self.lightningPlayed = true
 	end
 
+	local img = self.menuImg
 	local x = (Config.SCREEN_W - img.width) / 2
 	local y = (Config.SCREEN_H - img.height) / 2
 	img:draw(x, y)
