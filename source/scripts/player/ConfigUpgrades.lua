@@ -132,6 +132,24 @@ Config.UPGRADES = {
 		available = function() return Config.STORM_CLOUD_COUNT > 0 end,
 		format = function(v) return math.floor(v) .. " px/s" end,
 	},
+	{
+		id = "ammo_max",
+		title = "Bigger Quiver",
+		description = "Carry more tridents before running dry.",
+		configKey = "AMMO_MAX",
+		delta = 4,
+		maxValue = Config.AMMO_MAX_CAP,
+		format = function(v) return math.floor(v) .. " ammo" end,
+	},
+	{
+		id = "ammo_regen",
+		title = "Quick Reload",
+		description = "Ammo replenishes faster.",
+		configKey = "AMMO_REGEN_INTERVAL",
+		delta = -Config.AMMO_REGEN_INTERVAL_STEP,
+		minValue = 0.5,
+		format = function(v) return string.format("%.2f", v) .. " s" end,
+	},
 }
 
 -- Applies `upgrade` to the live Config table and returns the before/after

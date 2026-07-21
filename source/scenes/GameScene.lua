@@ -246,6 +246,9 @@ end
 
 ---@param side string "port" | "starboard"
 function GameScene:beginCharge(side)
+	-- Out of ammo: don't even start a charge that couldn't fire anyway (see
+	-- releaseCharge's Player:consumeAmmo call, the actual enforcement point).
+	if self.ship.ammo < Config.TRIDENT_COUNT * Config.AMMO_COST_PER_SHOT then return end
 	self.chargingSide = side
 	self.charge = 0
 	self.target = self:pickTarget(side)
@@ -284,29 +287,31 @@ function GameScene:releaseCharge(side)
 	if self.chargingSide ~= side then return end
 	if not self.gameOver then
 		local ship = self.ship
-		local dir
-		local target = self.target or self:pickTarget(side)
-		if target then
-			dir = Utils.angleTo(ship.x, ship.y, target.x, target.y)
-		else
-			-- Nothing to lock onto: fire a broadside straight out that side.
-			dir = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
-		end
-		-- Charging steadies the aim: accuracy ramps up to 99% at full charge,
-		-- so an undercharged shot can still stray wide of the target.
-		dir = Utils.wrapDeg(dir + (math.random() * 2 - 1) * self:currentAimSpread())
-		local speed = Config.TRIDENT_SPEED
 		local count = Config.TRIDENT_COUNT
-		for i = 1, count do
-			-- Fan extra tridents symmetrically around `dir` (e.g. count=2 fires
-			-- at -0.5*spread/+0.5*spread, count=3 at -spread/0/+spread).
-			local shotDir = Utils.wrapDeg(dir + (i - (count + 1) / 2) * Config.TRIDENT_COUNT_SPREAD)
-			local hx, hy = Utils.heading(shotDir)
-			local bx = ship.x + hx * (Config.SHIP_LENGTH + 4)
-			local by = ship.y + hy * (Config.SHIP_LENGTH + 4)
-			self.tridentballs[#self.tridentballs + 1] = Tridentball(bx, by, shotDir, speed)
+		if ship:consumeAmmo(count * Config.AMMO_COST_PER_SHOT) then
+			local dir
+			local target = self.target or self:pickTarget(side)
+			if target then
+				dir = Utils.angleTo(ship.x, ship.y, target.x, target.y)
+			else
+				-- Nothing to lock onto: fire a broadside straight out that side.
+				dir = Utils.wrapDeg(ship.heading + (side == "starboard" and 90 or -90))
+			end
+			-- Charging steadies the aim: accuracy ramps up to 99% at full charge,
+			-- so an undercharged shot can still stray wide of the target.
+			dir = Utils.wrapDeg(dir + (math.random() * 2 - 1) * self:currentAimSpread())
+			local speed = Config.TRIDENT_SPEED
+			for i = 1, count do
+				-- Fan extra tridents symmetrically around `dir` (e.g. count=2 fires
+				-- at -0.5*spread/+0.5*spread, count=3 at -spread/0/+spread).
+				local shotDir = Utils.wrapDeg(dir + (i - (count + 1) / 2) * Config.TRIDENT_COUNT_SPREAD)
+				local hx, hy = Utils.heading(shotDir)
+				local bx = ship.x + hx * (Config.SHIP_LENGTH + 4)
+				local by = ship.y + hy * (Config.SHIP_LENGTH + 4)
+				self.tridentballs[#self.tridentballs + 1] = Tridentball(bx, by, shotDir, speed)
+			end
+			Sound.playTridentWhoosh()
 		end
-		Sound.playTridentWhoosh()
 	end
 
 	self.chargingSide = nil

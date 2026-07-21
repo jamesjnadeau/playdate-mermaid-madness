@@ -45,31 +45,12 @@ function Tridentball:update()
 	if self.life <= 0 then self.dead = true end
 end
 
--- Drawn as a trident glyph rather than a ball: a shaft trailing behind a
--- crossbar, with three prongs (center + two spread outward) sticking forward
--- from the crossbar toward the direction of travel. (self.x, self.y) is the
--- tip -- the leading point used for collision -- everything else is laid out
--- behind it along self.dir.
+-- Drawn as a trident glyph rather than a ball -- see Utils.drawTridentGlyph.
+-- (self.x, self.y) is the tip -- the leading point used for collision.
 function Tridentball:draw()
-	local hx, hy = Utils.heading(self.dir)
-	local px, py = -hy, hx
-
-	local tipX, tipY = self.x, self.y
-	local crossX = tipX - hx * Config.TRIDENT_PRONG_LENGTH
-	local crossY = tipY - hy * Config.TRIDENT_PRONG_LENGTH
-	local tailX = crossX - hx * Config.TRIDENT_SHAFT_LENGTH
-	local tailY = crossY - hy * Config.TRIDENT_SHAFT_LENGTH
-	local leftX = crossX + px * Config.TRIDENT_PRONG_SPREAD
-	local leftY = crossY + py * Config.TRIDENT_PRONG_SPREAD
-	local rightX = crossX - px * Config.TRIDENT_PRONG_SPREAD
-	local rightY = crossY - py * Config.TRIDENT_PRONG_SPREAD
-
 	gfx.setColor(gfx.kColorBlack)
 	gfx.setLineWidth(Config.TRIDENT_LINE_WIDTH)
-	gfx.drawLine(tailX, tailY, crossX, crossY) -- shaft
-	gfx.drawLine(leftX, leftY, rightX, rightY) -- crossbar
-	gfx.drawLine(crossX, crossY, tipX, tipY) -- center prong
-	gfx.drawLine(leftX, leftY, leftX + hx * Config.TRIDENT_PRONG_LENGTH, leftY + hy * Config.TRIDENT_PRONG_LENGTH) -- left prong
-	gfx.drawLine(rightX, rightY, rightX + hx * Config.TRIDENT_PRONG_LENGTH, rightY + hy * Config.TRIDENT_PRONG_LENGTH) -- right prong
+	Utils.drawTridentGlyph(self.x, self.y, self.dir,
+		Config.TRIDENT_SHAFT_LENGTH, Config.TRIDENT_PRONG_LENGTH, Config.TRIDENT_PRONG_SPREAD)
 	gfx.setLineWidth(1)
 end

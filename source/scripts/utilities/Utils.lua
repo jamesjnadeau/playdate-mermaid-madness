@@ -157,4 +157,36 @@ function Utils.drawPolyline(points)
 	end
 end
 
+-- Draws a trident glyph: a shaft trailing behind a crossbar, with three
+-- prongs (center + two spread outward) sticking forward from the crossbar
+-- toward dirDeg. (tipX, tipY) is the leading point (the center prong's tip);
+-- everything else is laid out behind it along dirDeg. Shared by
+-- Tridentball.lua (the fired projectile, sized off Config.TRIDENT_*) and
+-- Player:drawAmmoIcons (the HUD ammo icons, sized off Config.AMMO_ICON_*).
+---@param tipX number
+---@param tipY number
+---@param dirDeg number
+---@param shaftLength number
+---@param prongLength number
+---@param prongSpread number
+function Utils.drawTridentGlyph(tipX, tipY, dirDeg, shaftLength, prongLength, prongSpread)
+	local hx, hy = Utils.heading(dirDeg)
+	local px, py = -hy, hx
+
+	local crossX = tipX - hx * prongLength
+	local crossY = tipY - hy * prongLength
+	local tailX = crossX - hx * shaftLength
+	local tailY = crossY - hy * shaftLength
+	local leftX = crossX + px * prongSpread
+	local leftY = crossY + py * prongSpread
+	local rightX = crossX - px * prongSpread
+	local rightY = crossY - py * prongSpread
+
+	gfx.drawLine(tailX, tailY, crossX, crossY) -- shaft
+	gfx.drawLine(leftX, leftY, rightX, rightY) -- crossbar
+	gfx.drawLine(crossX, crossY, tipX, tipY) -- center prong
+	gfx.drawLine(leftX, leftY, leftX + hx * prongLength, leftY + hy * prongLength) -- left prong
+	gfx.drawLine(rightX, rightY, rightX + hx * prongLength, rightY + hy * prongLength) -- right prong
+end
+
 return Utils

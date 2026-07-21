@@ -146,11 +146,55 @@ Config.TRIDENT_LINE_WIDTH    = 2  -- stroke thickness (px) of the trident glyph
 Config.TRIDENT_COUNT     = 1     -- tridents fired per manual release; set by the "Twin Tridents" upgrade
 Config.TRIDENT_COUNT_MAX = 3     -- cap on TRIDENT_COUNT, used as the upgrade's maxValue
 Config.TRIDENT_COUNT_SPREAD = 10 -- degrees between adjacent tridents when TRIDENT_COUNT > 1, fanned symmetrically around the aim direction
-Config.TARGET_RANGE     = 160   -- max auto-target acquisition distance, default: 320
+Config.TARGET_RANGE     = 10   -- max auto-target acquisition distance, default: 320
 Config.AIM_LINE_LENGTH  = 32    -- length (px) of the converging aim-indicator lines
 Config.AIM_LINE_WIDTH   = 2     -- stroke thickness (px) of the aim-indicator lines
 Config.NO_TARGET_MARK_SIZE   = 22 -- pixel height of the "?" shown when charging with nothing in range
 Config.NO_TARGET_MARK_OFFSET = 30 -- distance (px) from the ship's center to that mark
+
+----------
+-- Trident Ammo --
+----------
+-- Gates the manual port/starboard trident (GameScene:beginCharge/releaseCharge)
+-- -- the autofire cannon and Storm Cloud have their own independent limiters
+-- (a cooldown timer, a damage-tick interval) and don't draw from this pool.
+-- See Player:consumeAmmo/updateAmmo.
+Config.AMMO_MAX   = 5   -- max tridents the ship can carry; set by the "Bigger Quiver" upgrade
+Config.AMMO_START = 3 -- ammo a fresh run starts with
+-- Cap on AMMO_MAX, used as the "Bigger Quiver" upgrade's maxValue: past this,
+-- Player:drawAmmoIcons would run out of hull length to lay icons along (each
+-- pair of icons -- one per side -- eats AMMO_ICON_SPACING of the ship's
+-- SHIP_LENGTH going stern-ward from the bow).
+Config.AMMO_MAX_CAP = 16
+-- Ammo spent per manual release is TRIDENT_COUNT * AMMO_COST_PER_SHOT, so
+-- firing an extra trident (the "Twin Tridents" upgrade) costs proportionally
+-- more -- see GameScene:beginCharge/releaseCharge.
+Config.AMMO_COST_PER_SHOT = 1
+Config.AMMO_REGEN_AMOUNT   = 1 -- ammo restored per regen tick, see Player:updateAmmo
+Config.AMMO_REGEN_INTERVAL = 2 -- seconds between regen ticks; shortened by the "Quick Reload" upgrade
+Config.AMMO_REGEN_INTERVAL_STEP = 0.4 -- seconds AMMO_REGEN_INTERVAL drops by per pick of "Quick Reload"
+
+-- Ammo HUD: drawn as small trident glyphs over the hull, alternating sides,
+-- forks pointing outward -- see Player:drawAmmoIcons (called after the hull
+-- draws, so icons always land on top of it) and Utils.drawTridentGlyph (the
+-- same glyph shape Tridentball.lua draws for the fired projectile, just
+-- smaller and reused here).
+Config.AMMO_ICON_SHAFT_LENGTH  = 5  -- length (px) of the trailing shaft line
+Config.AMMO_ICON_PRONG_LENGTH  = 3  -- length (px) of each forward prong
+Config.AMMO_ICON_PRONG_SPREAD  = 2  -- half-width (px) of the crossbar / outer prong offset
+Config.AMMO_ICON_LINE_WIDTH    = 1  -- stroke thickness (px) of each icon
+Config.AMMO_ICON_SPACING = 5    -- px between adjacent icons along the hull, bow to stern
+-- Where each icon's tip sits relative to the ship's center (self.x, self.y):
+-- FORWARD_OFFSET is how far toward the bow the frontmost pair sits, along the
+-- heading axis; SIDE_OFFSET is how far the tip sits from the centerline,
+-- perpendicular to heading (the icon's tail -- see drawTridentGlyph -- lands
+-- SHAFT_LENGTH + PRONG_LENGTH closer to the centerline than that, so the
+-- default below puts the tail right at center and the tip at the hull edge,
+-- laying the whole glyph over the hull rather than out in the water beside
+-- it). Tune SIDE_OFFSET down to overlap the hull more, or past SHIP_BEAM to
+-- push icons back outside it.
+Config.AMMO_ICON_FORWARD_OFFSET = Config.SHIP_LENGTH * 0.5
+Config.AMMO_ICON_SIDE_OFFSET = Config.AMMO_ICON_SHAFT_LENGTH + Config.AMMO_ICON_PRONG_LENGTH
 
 ---------------------
 -- Autofire Cannon --

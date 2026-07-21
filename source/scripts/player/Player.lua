@@ -15,6 +15,8 @@ local gfx <const> = playdate.graphics
 ---@field sailAngularVelocity number deg/s, see Player:updateSailAngle
 ---@field wakePort table ParticleCircle
 ---@field wakeStarboard table ParticleCircle
+---@field ammo number tridents currently carried, see Player:consumeAmmo/updateAmmo
+---@field ammoRegenTimer number seconds until the next regen tick, see Player:updateAmmo
 Player = class("Player").extends(Ship) or Player
 
 ---@param x number
@@ -31,6 +33,8 @@ function Player:init(x, y)
 	self.windDirection = 0
 	self.sailAngle = self:sailTargetAngle()
 	self.sailAngularVelocity = 0
+	self.ammo = Config.AMMO_START
+	self.ammoRegenTimer = Config.AMMO_REGEN_INTERVAL
 
 	-- Hull Setup
 	local L, B = Config.SHIP_LENGTH, Config.SHIP_BEAM
@@ -118,6 +122,7 @@ function Player:update(windDirection, windSpeed)
 	if self.invuln > 0 then self.invuln = self.invuln - dt end
 	self.windDirection = windDirection
 	self:updateSailAngle(dt)
+	self:updateAmmo(dt)
 
 	-- Wind only ever adds on top of the guaranteed baseline speed, so a bad
 	-- point of sail (or a slack, luffing sail) never stalls the ship or
@@ -166,6 +171,32 @@ function Player:hit(damage)
 	return true
 end
 
+-- Regenerates ammo over time, independent of firing (see consumeAmmo -- it
+-- doesn't reset this timer, so a shot never delays the next regen tick).
+-- Counts down regardless of whether ammo is already full so a Config.AMMO_MAX
+-- pickup mid-run (the "Bigger Quiver" upgrade) doesn't need its own top-off:
+-- the next tick just fills the newly opened headroom.
+---@param dt number
+function Player:updateAmmo(dt)
+	if self.ammo >= Config.AMMO_MAX then return end
+	self.ammoRegenTimer = self.ammoRegenTimer - dt
+	if self.ammoRegenTimer <= 0 then
+		self.ammo = math.min(Config.AMMO_MAX, self.ammo + Config.AMMO_REGEN_AMOUNT)
+		self.ammoRegenTimer = Config.AMMO_REGEN_INTERVAL
+	end
+end
+
+-- Spends `amount` ammo if there's enough, e.g. Config.TRIDENT_COUNT *
+-- Config.AMMO_COST_PER_SHOT for a manual release (see GameScene:releaseCharge).
+-- Returns false (spending nothing) if the ship can't afford it.
+---@param amount number
+---@return boolean spent
+function Player:consumeAmmo(amount)
+	if self.ammo < amount then return false end
+	self.ammo = self.ammo - amount
+	return true
+end
+
 -- Bakes the small bow dot into the cached body image alongside the hull --
 -- see Ship:drawBodyLocal/buildBodyImage.
 ---@param cx number
@@ -190,10 +221,42 @@ function Player:drawSail()
 	gfx.drawLine(sx, sy, tipX, tipY)
 end
 
+-- Current ammo, drawn as small trident glyphs laid over the hull (odd = one
+-- side, even = the other), forks pointing outward, filling from the bow
+-- back. Each pair of icons shares a "slot" (a distance back from the
+-- frontmost pair) so both sides fill at the same rate rather than one side
+-- first. Placement relative to the ship's center is entirely
+-- Config-driven (AMMO_ICON_FORWARD_OFFSET/SIDE_OFFSET/SPACING) rather than
+-- derived from hull geometry, so it can be tuned to sit over the hull or out
+-- past it. Recomputed every frame (unlike the cached bodyImage) since ammo
+-- changes over time -- called after the hull/sail draw (see Player:draw),
+-- so icons always land on top of them -- see Utils.drawTridentGlyph for the
+-- shared glyph shape.
+function Player:drawAmmoIcons()
+	local hx, hy = Utils.heading(self.heading)
+	local px, py = -hy, hx
+
+	gfx.setColor(gfx.kColorBlack)
+	gfx.setLineWidth(Config.AMMO_ICON_LINE_WIDTH)
+	for i = 1, math.floor(self.ammo) do
+		local side = (i % 2 == 1) and 1 or -1 -- alternate port/starboard
+		local slot = math.floor((i - 1) / 2)
+		local along = Config.AMMO_ICON_FORWARD_OFFSET - slot * Config.AMMO_ICON_SPACING
+
+		local tipX = self.x + hx * along + px * (side * Config.AMMO_ICON_SIDE_OFFSET)
+		local tipY = self.y + hy * along + py * (side * Config.AMMO_ICON_SIDE_OFFSET)
+		local dirDeg = Utils.wrapDeg(self.heading + side * 90) -- points straight out from the centerline
+		Utils.drawTridentGlyph(tipX, tipY, dirDeg,
+			Config.AMMO_ICON_SHAFT_LENGTH, Config.AMMO_ICON_PRONG_LENGTH, Config.AMMO_ICON_PRONG_SPREAD)
+	end
+	gfx.setLineWidth(1)
+end
+
 function Player:draw()
 	if self.invuln > 0 and (math.floor(self.invuln * 12) % 2 == 0) then
 		return
 	end
 	Player.super.draw(self)
 	self:drawSail()
+	self:drawAmmoIcons()
 end
