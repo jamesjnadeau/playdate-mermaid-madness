@@ -10,12 +10,20 @@ local gfx <const> = playdate.graphics
 ---@class TitleScene : NobleScene
 ---@field t number seconds elapsed, drives the TITLE_MENU_DELAY/lightning timing
 ---@field selected integer index into MENU_ITEMS
----@field lightningPlayed boolean set once Sound.playLightning has fired for this visit, so it plays exactly once right before the menu appears
 ---@field menuImg _Image drawn image of the menu card for the current selection, see rebuildMenu()
 ---@field crankAccum number leftover crank degrees not yet converted into a menu move, see the cranked handler
 TitleScene = class("TitleScene").extends(NobleScene) or TitleScene
 
 local scene = nil
+
+-- Module-scope (not a self.* field): Noble.transition(TitleScene) builds a
+-- brand-new TitleScene instance -- and so re-runs :init() -- every time the
+-- title screen is revisited, but this file is only ever loaded once per game
+-- session. Tracking the "has the crack played yet" flag here instead of on
+-- self means it stays true for the rest of the session once set, so the
+-- lightning only plays the first time the title screen appears, not every
+-- time the player backs out to it.
+local lightningPlayedThisSession = false
 
 -- Degrees of crank rotation that moves the highlight by one item, same idea
 -- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
@@ -102,7 +110,6 @@ function TitleScene:init(...)
 	self.backgroundColor = gfx.kColorWhite
 	self.t = 0
 	self.selected = 2
-	self.lightningPlayed = false
 	self.crankAccum = 0
 	self:rebuildMenu()
 end
@@ -178,11 +185,12 @@ function TitleScene:update()
 
 	-- Hidden entirely until TITLE_MENU_DELAY elapses (letting the splash art
 	-- sit alone for a beat), then just appears in place -- no rise/slide. A
-	-- lightning crack plays once, the instant it appears.
+	-- lightning crack plays the instant it first appears -- but only the
+	-- first time this game session, see lightningPlayedThisSession above.
 	if self.t < Config.TITLE_MENU_DELAY then return end
-	if not self.lightningPlayed then
+	if not lightningPlayedThisSession then
 		Sound.playLightning()
-		self.lightningPlayed = true
+		lightningPlayedThisSession = true
 	end
 
 	local img = self.menuImg
