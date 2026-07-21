@@ -49,6 +49,7 @@ partition=$(lsblk -rno NAME,TYPE "/dev/$disk" | awk '$2 == "part" {print $1; exi
 [ -z "$partition" ] && partition="$disk"
 
 echo "==> Mounting /dev/$partition"
+<<<<<<< HEAD
 mount_output=$(udisksctl mount -b "/dev/$partition" --no-user-interaction)
 mountpoint=$(echo "$mount_output" | sed -n 's/.* at \(.*\)\.$/\1/p')
 if [ -z "$mountpoint" ]; then
@@ -56,6 +57,27 @@ if [ -z "$mountpoint" ]; then
 fi
 if [ -z "$mountpoint" ]; then
 	echo "Mounted /dev/$partition but couldn't determine its mountpoint." >&2
+=======
+# Desktop environments auto-mount removable disks on their own, which races
+# our udisksctl call below -- lsblk sees the new partition (straight from
+# the kernel) before udisks2 has finished registering it as a D-Bus object,
+# so an immediate `udisksctl mount` can fail with "Error looking up object
+# for device". Check for an existing (auto-)mount first, and only fall back
+# to mounting it ourselves -- with retries to ride out that same race -- if
+# nothing beat us to it.
+mountpoint=""
+for _ in $(seq 1 15); do
+	mountpoint=$(lsblk -rno MOUNTPOINT "/dev/$partition")
+	[ -n "$mountpoint" ] && break
+	if mount_output=$(udisksctl mount -b "/dev/$partition" --no-user-interaction 2>/dev/null); then
+		mountpoint=$(echo "$mount_output" | sed -n 's/.* at \(.*\)\.$/\1/p')
+		[ -n "$mountpoint" ] && break
+	fi
+	sleep 1
+done
+if [ -z "$mountpoint" ]; then
+	echo "Couldn't mount or find an existing mount for /dev/$partition." >&2
+>>>>>>> 86ed15f (Add tools/upload.sh to push builds directly to a USB-connected Playdate)
 	exit 1
 fi
 

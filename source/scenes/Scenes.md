@@ -286,15 +286,24 @@ the highlighted row's purpose shows in the description pane on the right.
 ## TuningScene
 
 A broad debug/tweak surface, not a curated player-facing settings screen
-like `SettingsScene`'s HUD/Sound sections: a single scrollable, categorized
-menu covering nearly every remaining `Config.lua` tuning value (~90 fields,
-grouped to mirror `Config.lua`'s own section comments). Changes are
-runtime-only — they mutate the global `Config` table in place, the same way
+like `SettingsScene`'s rows: a single scrollable, categorized menu covering
+nearly every remaining `Config.lua` tuning value (~90 fields, grouped to
+mirror `Config.lua`'s own section comments). Changes are runtime-only —
+they mutate the global `Config` table in place, the same way
 `SettingsScene`'s `HUD_SHOW_*` toggles already do, and nothing here ever
 touches `playdate.datastore`, so nothing persists past the current play
-session. Built with [playout](../libraries/playout.lua); the row list is
-windowed (`VISIBLE_ROWS`) around the current selection rather than laid out
-in full, so the tree stays cheap to rebuild despite the field count.
+session.
+
+Rendered via `MenuCard` (`source/scripts/utilities/MenuCard.lua`), the same
+list+description card layout `UpgradeTestScene`/`UpgradeSelectScene`/
+`SettingsScene` use, with two `MenuCard` features that exist only for this
+scene's benefit: `headerBefore` (set on the first item of each category)
+renders that category's name as a non-selectable header line without
+shifting the selectable rows' numbering, and `opts.maxVisible` windows the
+on-screen rows to `VISIBLE_ROWS` at a time, recentered around the selection
+on every rebuild, so a rebuild never has to lay out all ~90 rows at once —
+the same cost `TuningScene.lua`'s own windowing used to handle itself,
+before it moved into the shared component.
 
 Deliberately excludes every `Config.ENEMY_*`/`ConfigEnemy.lua` field, plus a
 handful of `Config.lua` fields that can't be meaningfully live-tuned this

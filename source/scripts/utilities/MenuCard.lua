@@ -7,7 +7,23 @@
 -- line between them. Used by UpgradeTestScene and UpgradeSelectScene's
 -- "select" phase -- pulled out here since both need the identical layout
 -- math and the identical playout.lua workaround (see MenuCard.build's
--- comment on the tree:layout() maxHeight cap).
+-- comment on the tree:layout() maxHeight cap). Also used by SettingsScene
+-- (a flat list, no headers/windowing) and TuningScene (which does use both
+-- -- see the `headerBefore`/`opts.maxVisible` params below).
+--
+-- Two features exist purely for TuningScene's ~90-row menu and are no-ops
+-- for every other caller unless opted into:
+--  - `items[i].headerBefore`: an optional non-selectable header line
+--    (category name) inserted immediately before that item in the on-screen
+--    list. Doesn't shift `selectedIndex`'s numbering -- that still counts
+--    only selectable items, exactly like a caller with no headers at all.
+--  - `opts.maxVisible`: caps how many display rows (headers + items) are
+--    laid out at once, recentered around the selection on every rebuild
+--    (see computeWindow below) -- the same fixed-cost-per-rebuild windowing
+--    TuningScene.lua used to do itself, now shared. Omitted (the default)
+--    lays out every row, which is fine for short lists (UpgradeTestScene/
+--    UpgradeSelectScene/SettingsScene) but would make every keypress
+--    relayout the entire list for a 90-row one.
 
 ---@class MenuCard
 MenuCard = {}
@@ -49,6 +65,11 @@ MenuCard.ROW_GAP = 6
 MenuCard.MENU_FRACTION = 1 / 2
 MenuCard.DIVIDER_GAP = 6
 
+---@class MenuCard.Item
+---@field title string
+---@field description string shown in the description pane when this item is selected
+---@field headerBefore? string non-selectable header line inserted immediately before this item -- see the file header comment
+
 ---@class MenuCard.Layout
 ---@field titleImg _Image
 ---@field footerImg _Image
@@ -57,16 +78,34 @@ MenuCard.DIVIDER_GAP = 6
 ---@field listImg _Image drawn image of listTree, may be taller than its on-screen viewport once scrolled
 ---@field selectedRect table rect of the highlighted item within listImg
 
+-- Centers a maxVisible-row window around displayPos within a list of
+-- rowCount rows, clamped so the window never runs past either end -- same
+-- idea as TuningScene.lua's old (now removed) computeScrollStart, just
+-- generalized over an arbitrary maxVisible instead of a hardcoded constant.
+---@param displayPos integer
+---@param rowCount integer
+---@param maxVisible integer
+---@return integer start
+---@return integer lastVisible
+local function computeWindow(displayPos, rowCount, maxVisible)
+	local start = displayPos - floor(maxVisible / 2)
+	local maxStart = math.max(1, rowCount - maxVisible + 1)
+	start = math.max(1, math.min(start, maxStart))
+	return start, math.min(rowCount, start + maxVisible - 1)
+end
+
 -- Builds everything MenuCard.draw() needs to render one frame. Call again
 -- (a fresh MenuCard.Layout, not a mutation of the last one) whenever the
 -- selection changes.
 ---@param titleText string
 ---@param footerText string
----@param items { title: string, description: string }[]
+---@param items MenuCard.Item[]
 ---@param selectedIndex integer
 ---@param font any? font override (see e.g. UpgradeSelectScene's MENU_FONT), or nil for the current global font
+---@param opts? { maxVisible?: integer } maxVisible windows the display rows (headers + items) to that many at once, recentered on the selection every rebuild -- see the file header comment. Omitted lays out every row.
 ---@return MenuCard.Layout
-function MenuCard.build(titleText, footerText, items, selectedIndex, font)
+function MenuCard.build(titleText, footerText, items, selectedIndex, font, opts)
+	opts = opts or {}
 	local contentWidth = Config.SCREEN_W - 2 * (MenuCard.CARD_MARGIN + MenuCard.CARD_PADDING)
 	local menuWidth = floor((contentWidth - MenuCard.DIVIDER_GAP) * MenuCard.MENU_FRACTION)
 	local descWidth = contentWidth - MenuCard.DIVIDER_GAP - menuWidth
@@ -77,19 +116,52 @@ function MenuCard.build(titleText, footerText, items, selectedIndex, font)
 	layout.titleImg = playout.tree.new(playout.text.new(titleText, { font = font })):draw()
 	layout.footerImg = playout.tree.new(playout.text.new(footerText, { font = font })):draw()
 
-	local children = {}
+	-- Expands `items` into on-screen display rows, inserting a header text
+	-- row wherever an item declares `headerBefore`. Headers take up a
+	-- display slot but never affect `selectedIndex`'s numbering, which still
+	-- counts only items -- a caller with no headerBefore anywhere gets
+	-- displayRows == items 1:1, same as before this feature existed.
+	local displayRows = {}
+	local selectedDisplayPos
 	for i, item in ipairs(items) do
-		local isSelected = i == selectedIndex
-		children[#children + 1] = playout.box.new({
-			id = "item" .. i,
-			padding = 4,
-			hAlign = playout.kAlignStart,
-			backgroundColor = isSelected and gfx.kColorBlack or nil,
-		}, {
-			playout.text.new(item.title, {
-				color = isSelected and gfx.kColorWhite or gfx.kColorBlack,
-			}),
-		})
+		if item.headerBefore then
+			displayRows[#displayRows + 1] = { header = item.headerBefore }
+		end
+		displayRows[#displayRows + 1] = { itemIndex = i }
+		if i == selectedIndex then selectedDisplayPos = #displayRows end
+	end
+
+	local startPos, lastPos = 1, #displayRows
+	if opts.maxVisible then
+		startPos, lastPos = computeWindow(selectedDisplayPos, #displayRows, opts.maxVisible)
+	end
+
+	local children = {}
+	if opts.maxVisible and startPos > 1 then
+		children[#children + 1] = playout.text.new("^ more above")
+	end
+	for pos = startPos, lastPos do
+		local row = displayRows[pos]
+		if row.header then
+			children[#children + 1] = playout.text.new(row.header)
+		else
+			local i = row.itemIndex
+			local item = items[i]
+			local isSelected = i == selectedIndex
+			children[#children + 1] = playout.box.new({
+				id = "item" .. i,
+				padding = 4,
+				hAlign = playout.kAlignStart,
+				backgroundColor = isSelected and gfx.kColorBlack or nil,
+			}, {
+				playout.text.new(item.title, {
+					color = isSelected and gfx.kColorWhite or gfx.kColorBlack,
+				}),
+			})
+		end
+	end
+	if opts.maxVisible and lastPos < #displayRows then
+		children[#children + 1] = playout.text.new("v more below")
 	end
 	local listRoot = playout.box.new({
 		direction = playout.kDirectionVertical,

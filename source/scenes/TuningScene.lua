@@ -1,17 +1,24 @@
 -- TuningScene.lua
--- Reached from SettingsScene's "Tuning" section (its "Open Tuning Menu" row
--- -- see SettingsScene.lua). Lets you live-adjust nearly every Config.lua
--- tuning value from a single scrollable, categorized menu -- unlike
--- SettingsScene's HUD/Sound rows, this is meant as a broad debug/tweak
--- surface, not a curated player-facing settings screen; that's also why it's
--- not reachable directly from the title screen. Changes are runtime-only:
--- they mutate the global Config table exactly like SettingsScene's
--- HUD_SHOW_* toggles already do, and nothing here ever touches
--- playdate.datastore, so nothing persists past this play session. Built
--- with the playout UI library, see libraries/playout.lua. Up/Down move the
--- highlight (wraps); the crank fast-scrolls through the list; Left/Right
--- adjust the highlighted numeric setting; Ⓐ toggles the highlighted boolean
--- setting; Ⓑ returns to SettingsScene.
+-- Reached from SettingsScene's "Open Tuning Menu" row. Lets you live-adjust
+-- nearly every Config.lua tuning value from a single scrollable, categorized
+-- menu -- unlike SettingsScene's curated rows, this is meant as a broad
+-- debug/tweak surface, not a player-facing settings screen; that's also why
+-- it's not reachable directly from the title screen. Changes are
+-- runtime-only: they mutate the global Config table exactly like
+-- SettingsScene's HUD_SHOW_* toggles already do, and nothing here ever
+-- touches playdate.datastore, so nothing persists past this play session.
+--
+-- Rendered via MenuCard (source/scripts/utilities/MenuCard.lua), the same
+-- list+description card layout UpgradeTestScene/UpgradeSelectScene/
+-- SettingsScene use, with two features MenuCard supports only for this
+-- scene's benefit (see MenuCard.lua's header comment): `headerBefore` on the
+-- first item of each category inserts that category's name as a
+-- non-selectable header line, and `opts.maxVisible` windows the on-screen
+-- rows to VISIBLE_ROWS at a time (recentered on the selection every
+-- rebuild) so a rebuild never has to lay out all ~90 rows at once. Up/Down
+-- move the highlight (wraps); the crank fast-scrolls through the list;
+-- Left/Right adjust the highlighted numeric setting; Ⓐ toggles the
+-- highlighted boolean setting; Ⓑ returns to SettingsScene.
 --
 -- Deliberately leaves out:
 --  - every Config.ENEMY_*/ConfigEnemy.lua field.
@@ -33,6 +40,7 @@
 
 import "scripts/utilities/Config"
 import "scripts/utilities/Utils"
+import "scripts/utilities/MenuCard"
 
 local gfx <const> = playdate.graphics
 
@@ -44,19 +52,18 @@ local gfx <const> = playdate.graphics
 ---@field min? number
 ---@field max? number
 ---@field decimals? integer digits shown/rounded to for a number row
----@field row integer index into ROWS, filled in when the category table is flattened below
+---@field headerBefore? string category name, set on the first item of each CATEGORIES entry -- see the flatten loop below
 
 ---@class TuningScene : NobleScene
----@field selected integer index into SETTING_ROWS
+---@field selected integer index into ITEMS
 ---@field crankAccum number leftover crank degrees not yet converted into a row move, see the cranked handler
----@field tree table playout tree, see rebuild()
----@field img _Image drawn image of the playout tree, see rebuild()
+---@field layout MenuCard.Layout see rebuild()
 TuningScene = class("TuningScene").extends(NobleScene) or TuningScene
 
 local scene = nil
 
--- How many rows (category headers + settings) fit in the scroll window at
--- once -- see computeScrollStart/buildTree.
+-- How many display rows (headers + items) MenuCard lays out at once -- see
+-- opts.maxVisible in MenuCard.build.
 local VISIBLE_ROWS = 9
 
 -- Degrees of crank rotation that scrolls the list by one row.
@@ -163,7 +170,6 @@ local CATEGORIES = {
 	} },
 	{ name = "Title Screen", items = {
 		{ key = "TITLE_MENU_DELAY", step = 0.5, min = 0, max = 20, decimals = 1 },
-		{ key = "TITLE_MENU_RISE_DURATION", step = 0.1, min = 0.1, max = 10, decimals = 2 },
 	} },
 	{ name = "Instructions", items = {
 		{ key = "INSTRUCTIONS_CRANK_SECONDS", step = 0.5, min = 0.5, max = 20, decimals = 1 },
@@ -198,22 +204,20 @@ local function roundTo(v, decimals)
 	return math.floor(v * mult + 0.5) / mult
 end
 
--- Flattened once at load time: ROWS is every row in on-screen order
--- (category headers + settings), SETTING_ROWS is just the selectable
--- subset -- moveSelection/adjustValue/toggleBoolean index into SETTING_ROWS,
--- each entry's `row` field points back into ROWS so buildTree knows where
--- the current selection sits for scrolling.
-local ROWS = {}
-local SETTING_ROWS = {}
+-- Flattened once at load time, in on-screen order. `selected` (and
+-- moveSelection/adjustValue/toggleBoolean below) index directly into this --
+-- unlike ROWS in the old hand-rolled layout, there's no separate "every row
+-- including headers" array anymore: MenuCard takes headerBefore on the
+-- item itself and inserts the header display-side, so ITEMS' numbering
+-- never has to account for them.
+local ITEMS = {}
 for _, category in ipairs(CATEGORIES) do
-	ROWS[#ROWS + 1] = { kind = "header", label = category.name }
-	for _, item in ipairs(category.items) do
+	for j, item in ipairs(category.items) do
 		item.type = item.type or "number"
 		item.decimals = item.decimals or 0
 		item.label = item.label or titleCase(item.key)
-		ROWS[#ROWS + 1] = { kind = "setting", item = item }
-		item.row = #ROWS
-		SETTING_ROWS[#SETTING_ROWS + 1] = item
+		if j == 1 then item.headerBefore = category.name end
+		ITEMS[#ITEMS + 1] = item
 	end
 end
 
@@ -226,70 +230,35 @@ local function formatValue(item)
 	return string.format("%." .. item.decimals .. "f", Config[item.key])
 end
 
--- Keeps the selected row inside a VISIBLE_ROWS-tall window, recentering
--- rather than nudging by one -- simple and correct regardless of how far a
--- single crank tick or selection wrap moves the target row.
----@param rowIndex integer
----@return integer
-local function computeScrollStart(rowIndex)
-	local start = rowIndex - math.floor(VISIBLE_ROWS / 2)
-	local maxStart = math.max(1, #ROWS - VISIBLE_ROWS + 1)
-	return Utils.clamp(start, 1, maxStart)
+---@param item TuningScene.Item
+---@return string
+local function formatTitle(item)
+	if item.type == "boolean" then
+		return formatValue(item) .. item.label
+	end
+	return item.label .. ": " .. formatValue(item)
 end
 
--- Builds a fresh playout tree around `selectedIndex` (into SETTING_ROWS),
--- windowed to VISIBLE_ROWS around the current selection. Rebuilt (rather
--- than mutated in place) on every change, same as SettingsScene/
--- EnemySelectScene.
----@param selectedIndex integer
----@return table playout tree
-local function buildTree(selectedIndex)
-	local currentItem = SETTING_ROWS[selectedIndex]
-	local start = computeScrollStart(currentItem.row)
-	local lastVisible = math.min(#ROWS, start + VISIBLE_ROWS - 1)
-
-	local children = {
-		playout.text.new("Tuning"),
-	}
-	if start > 1 then
-		children[#children + 1] = playout.text.new("^ more above")
+---@param item TuningScene.Item
+---@return string
+local function formatDescription(item)
+	if item.type == "boolean" then
+		return "Toggle on or off."
 	end
-	for i = start, lastVisible do
-		local row = ROWS[i]
-		if row.kind == "header" then
-			children[#children + 1] = playout.text.new(row.label)
-		else
-			local item = row.item
-			local isSelected = item == currentItem
-			local text = item.type == "boolean" and (formatValue(item) .. item.label)
-				or (item.label .. ": " .. formatValue(item))
-			children[#children + 1] = playout.box.new({
-				padding = 2,
-				hAlign = playout.kAlignStart,
-				backgroundColor = isSelected and gfx.kColorBlack or nil,
-			}, {
-				playout.text.new(text, {
-					color = isSelected and gfx.kColorWhite or gfx.kColorBlack,
-				}),
-			})
-		end
-	end
-	if lastVisible < #ROWS then
-		children[#children + 1] = playout.text.new("v more below")
-	end
-	children[#children + 1] = playout.text.new("Left/Right adjust  Ⓐ toggle  Ⓑ back")
+	return "Range: " .. tostring(item.min) .. " to " .. tostring(item.max) .. " (step " .. tostring(item.step) .. ")"
+end
 
-	local root = playout.box.new({
-		direction = playout.kDirectionVertical,
-		spacing = 4,
-		padding = 10,
-		hAlign = playout.kAlignCenter,
-		backgroundColor = gfx.kColorWhite,
-		border = 2,
-		borderRadius = 6,
-	}, children)
-
-	return playout.tree.new(root)
+---@return MenuCard.Item[]
+local function buildMenuItems()
+	local items = {}
+	for i, item in ipairs(ITEMS) do
+		items[i] = {
+			title = formatTitle(item),
+			description = formatDescription(item),
+			headerBefore = item.headerBefore,
+		}
+	end
+	return items
 end
 
 ---@param ... any
@@ -301,7 +270,7 @@ function TuningScene:init(...)
 
 	-- Built here rather than in :start() -- Noble may call :update() during
 	-- the tail of the transition in, before :start() fires (see GameScene's
-	-- init/start comments), so self.img must already exist by then.
+	-- init/start comments), so self.layout must already exist by then.
 	self:rebuild()
 end
 
@@ -316,14 +285,13 @@ function TuningScene:finish()
 end
 
 function TuningScene:rebuild()
-	self.tree = buildTree(self.selected)
-	self.img = self.tree:draw()
+	self.layout = MenuCard.build("Tuning", "Left/Right adjust   Ⓐ toggle   Ⓑ back", buildMenuItems(), self.selected, nil, { maxVisible = VISIBLE_ROWS })
 end
 
 ---@param delta integer
 local function moveSelection(delta)
 	if not scene then return end
-	local count = #SETTING_ROWS
+	local count = #ITEMS
 	scene.selected = ((scene.selected - 1 + delta) % count) + 1
 	scene:rebuild()
 end
@@ -331,7 +299,7 @@ end
 ---@param delta integer -1 or 1, in units of the row's step
 local function adjustValue(delta)
 	if not scene then return end
-	local item = SETTING_ROWS[scene.selected]
+	local item = ITEMS[scene.selected]
 	if item.type ~= "number" then return end
 	local newValue = roundTo(Config[item.key] + delta * item.step, item.decimals)
 	Config[item.key] = Utils.clamp(newValue, item.min, item.max)
@@ -340,7 +308,7 @@ end
 
 local function toggleBoolean()
 	if not scene then return end
-	local item = SETTING_ROWS[scene.selected]
+	local item = ITEMS[scene.selected]
 	if item.type ~= "boolean" then return end
 	Config[item.key] = not Config[item.key]
 	scene:rebuild()
@@ -375,8 +343,5 @@ TuningScene.inputHandler = {
 
 function TuningScene:update()
 	TuningScene.super.update(self)
-	gfx.setImageDrawMode(gfx.kDrawModeCopy)
-	local x = (Config.SCREEN_W - self.img.width) / 2
-	local y = (Config.SCREEN_H - self.img.height) / 2
-	self.img:draw(x, y)
+	MenuCard.draw(self.layout)
 end

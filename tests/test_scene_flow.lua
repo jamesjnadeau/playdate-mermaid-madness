@@ -314,8 +314,8 @@ end
 -- last row of SettingsScene's ITEMS table: 4 HUD rows + Song + Volume
 -- precede "Open Tuning Menu", so 6 downButtonDowns from Settings' default
 -- selection=1 lands on it. TuningScene.selected then starts on its own
--- ROWS/SETTING_ROWS[1], which is always Config.WATER_GRID (CATEGORIES[1] =
--- "Water", its first item) -- see TuningScene.lua.
+-- ITEMS[1], which is always Config.WATER_GRID (CATEGORIES[1] = "Water", its
+-- first item) -- see TuningScene.lua.
 local function enterTuningFromTitle()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
@@ -357,7 +357,7 @@ end
 
 -- Exercises the crank fast-scroll path (moves one row per 20 degrees, see
 -- TuningScene.CRANK_DEGREES_PER_ROW) and A's toggle behavior on a boolean
--- row. Config.HUD_SHOW_WIND_SPEED is SETTING_ROWS[63]: 57 rows across the
+-- row. Config.HUD_SHOW_WIND_SPEED is ITEMS[63]: 57 rows across the
 -- Water/Wind/Explosions/Ship/Sail/Trident categories, then 5 more HUD rows
 -- (the OFFSCREEN_INDICATOR_* fields) precede it within "HUD" -- see
 -- TuningScene.lua's CATEGORIES table; update this test if that ordering
