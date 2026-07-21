@@ -251,32 +251,34 @@ actually performs *that* direction enough — see `Config.INSTRUCTIONS_*`:
 
 ## SettingsScene
 
-Three sections in one flat (scrollless — it's short) list, grouped like
-`TuningScene`'s categorized menu but curated for players rather than
-covering all of `Config.lua`:
+A flat (scrollless — it's short) list of 7 rows, curated for players rather
+than covering all of `Config.lua` like `TuningScene` does:
 
-- **HUD** — the `Config.HUD_SHOW_*` flags (Wind Speed / Wind Direction /
-  Player Speed) — moved here (out of the system menu) so the system menu
-  stays free for scene-specific items like `GameSceneTraining`'s "Select
-  Enemy"; see the 3-item cap note in `CLAUDE.md`.
-- **Sound** — a "Song" row that cycles through song subdirectories (each a
-  set of pre-rendered ADPCM `.wav` pieces, see `tools/render-song.sh`) found
-  under `source/assets/songs` (scanned once via `playdate.file.listFiles`)
-  via `MusicPlayer`, immediately loading and playing whichever one is
-  selected as a live preview (it keeps looping as background music after you
-  leave this scene — nothing stops it), and a "Volume" row
-  (`Config.MUSIC_VOLUME`, applied immediately via `MusicPlayer.applyVolume()`).
-  The choice is recorded in `Config.MUSIC_SONG` (a song name, or nil for no
-  song).
-- **Tuning** — a single "Open Tuning Menu" row; A transitions to
-  `TuningScene` (see below). This is the only way to reach `TuningScene` —
-  it's not on the title screen.
+- **HUD toggles** — the `Config.HUD_SHOW_*` flags (Wind Speed / Wind
+  Direction / Player Speed / FPS Counter) — moved here (out of the system
+  menu) so the system menu stays free for scene-specific items like
+  `GameSceneTraining`'s "Select Enemy"; see the 3-item cap note in
+  `CLAUDE.md`.
+- **Song** — cycles through song subdirectories (each a set of
+  pre-rendered ADPCM `.wav` pieces, see `tools/render-song.sh`) found under
+  `source/assets/songs` (scanned once via `playdate.file.listFiles`) via
+  `MusicPlayer`, immediately loading and playing whichever one is selected as
+  a live preview (it keeps looping as background music after you leave this
+  scene — nothing stops it). The choice is recorded in `Config.MUSIC_SONG`
+  (a song name, or nil for no song).
+- **Volume** — `Config.MUSIC_VOLUME`, applied immediately via
+  `MusicPlayer.applyVolume()`.
+- **Open Tuning Menu** — an action row; A transitions to `TuningScene` (see
+  below). This is the only way to reach `TuningScene` — it's not on the
+  title screen.
 
-Built with [playout](../libraries/playout.lua).
+Rendered via `MenuCard` (`source/scripts/utilities/MenuCard.lua`), the same
+list+description card layout `UpgradeTestScene`/`UpgradeSelectScene` use —
+the highlighted row's purpose shows in the description pane on the right.
 
 - **Reached from:** `TitleScene` ("Settings"); `TuningScene` (B).
 - **Controls:** Up/Down (or the crank) move the highlight (wraps); Left/Right
-  cycle the Song row or adjust the Volume row (a no-op on HUD/Tuning rows); A
+  cycle the Song row or adjust the Volume row (a no-op on other rows); A
   toggles the highlighted HUD setting or activates the Tuning row (a no-op on
   Sound rows); B returns to `TitleScene`.
 - **sceneProperties read:** none.

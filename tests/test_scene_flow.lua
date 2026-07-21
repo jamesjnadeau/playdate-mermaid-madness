@@ -249,8 +249,8 @@ function TestSceneFlow:testTitleSettingsCrankScroll()
 	lu.assertEquals(scene.crankAccum, 0)
 end
 
--- Unlike the other HUD_SHOW_* rows, toggling "FPS Counter" (SETTING_ROWS[4])
--- also has to mirror the value onto Noble.showFPS -- see SettingsScene.lua's
+-- Unlike the other HUD_SHOW_* rows, toggling "FPS Counter" (ITEMS[4]) also
+-- has to mirror the value onto Noble.showFPS -- see SettingsScene.lua's
 -- activate().
 function TestSceneFlow:testTitleSettingsFpsCounterTogglesNobleShowFPS()
 	Noble.Input.fire("downButtonDown")
@@ -272,10 +272,10 @@ function TestSceneFlow:testTitleSettingsFpsCounterTogglesNobleShowFPS()
 	lu.assertEquals(Noble.showFPS, before)
 end
 
--- SETTING_ROWS[5] is the Song row, [6] is Volume -- see SettingsScene.lua's
--- CATEGORIES. mock_noble.lua's playdate.file.listFiles always returns an
--- empty list (no real .pdx bundle under lua5.4), so the Song row has
--- nothing to cycle through; this only exercises that it's a safe no-op.
+-- ITEMS[5] is the Song row, [6] is Volume -- see SettingsScene.lua's ITEMS
+-- table. mock_noble.lua's playdate.file.listFiles always returns an empty
+-- list (no real .pdx bundle under lua5.4), so the Song row has nothing to
+-- cycle through; this only exercises that it's a safe no-op.
 function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
@@ -311,12 +311,11 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 end
 
 -- Tuning is no longer reachable directly from the title screen -- it's the
--- last row of SettingsScene's "Tuning" section (see SettingsScene.lua's
--- CATEGORIES: 4 HUD rows + Song + Volume precede "Open Tuning Menu" in
--- SETTING_ROWS, so 6 downButtonDowns from Settings' default selection=1
--- lands on it). TuningScene.selected then starts on ROWS/SETTING_ROWS[1],
--- which is always Config.WATER_GRID (CATEGORIES[1] = "Water", its first
--- item) -- see TuningScene.lua.
+-- last row of SettingsScene's ITEMS table: 4 HUD rows + Song + Volume
+-- precede "Open Tuning Menu", so 6 downButtonDowns from Settings' default
+-- selection=1 lands on it. TuningScene.selected then starts on its own
+-- ROWS/SETTING_ROWS[1], which is always Config.WATER_GRID (CATEGORIES[1] =
+-- "Water", its first item) -- see TuningScene.lua.
 local function enterTuningFromTitle()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"

@@ -1,15 +1,16 @@
 -- SettingsScene.lua
--- Reached from the title screen's "Settings" item. Three sections in one
--- scrollless list (it's short enough not to need TuningScene's scroll
--- window): HUD toggles (Config.HUD_SHOW_*, moved here from the system menu
--- so it stays free for scene-specific items -- see EnemySelectScene/
--- GameSceneTraining's "Select Enemy"), Sound (pick a background song out of
+-- Reached from the title screen's "Settings" item. A flat list of settings
+-- (HUD toggles -- Config.HUD_SHOW_*, moved here from the system menu so it
+-- stays free for scene-specific items, see EnemySelectScene/
+-- GameSceneTraining's "Select Enemy"; Sound -- pick a background song out of
 -- source/assets/songs and set Config.MUSIC_VOLUME, via MusicPlayer.selectSong
 -- -- the same function main.lua's boot default and the system menu's
--- "Music" checkmark use, so all three stay in sync), and Tuning (a single
+-- "Music" checkmark use, so all three stay in sync; and Tuning -- a single
 -- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
 -- longer reachable directly from the title screen, only through here).
--- Built with the playout UI library, see libraries/playout.lua. Up/Down (or
+-- Rendered via MenuCard (source/scripts/utilities/MenuCard.lua), the same
+-- list+description card layout UpgradeTestScene/UpgradeSelectScene use --
+-- the description pane shows what the highlighted row does. Up/Down (or
 -- the crank) move the highlight (wraps); Left/Right cycle the song or adjust
 -- the volume; Ⓐ toggles a HUD setting or opens Tuning; Ⓑ returns to the
 -- title screen.
@@ -17,12 +18,14 @@
 import "scripts/utilities/Config"
 import "scripts/utilities/Utils"
 import "scripts/utilities/MusicPlayer"
+import "scripts/utilities/MenuCard"
 
 local gfx <const> = playdate.graphics
 
 ---@class SettingsScene.Item
 ---@field type "boolean"|"number"|"song"|"action"
 ---@field label string
+---@field description string shown in MenuCard's description pane when this row is highlighted
 ---@field key? string Config field this row edits (boolean/number types)
 ---@field step? number Left/Right increment, for number rows
 ---@field min? number
@@ -31,17 +34,16 @@ local gfx <const> = playdate.graphics
 ---@field action? fun() Ⓐ handler, for action rows
 
 ---@class SettingsScene : NobleScene
----@field selected integer index into SETTING_ROWS
----@field tree table playout tree, see rebuild()
----@field img _Image drawn image of the playout tree, see rebuild()
+---@field selected integer index into ITEMS
+---@field layout MenuCard.Layout see rebuild()
 ---@field crankAccum number leftover crank degrees not yet converted into a row move, see the cranked handler
 SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 
 local scene = nil
 
--- Degrees of crank rotation that scrolls the list by one row, same idea
+-- Degrees of crank rotation that moves the highlight by one row, same idea
 -- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
-local CRANK_DEGREES_PER_ROW = 20
+local CRANK_DEGREES_PER_ITEM = 20
 
 -- The song row cycles a virtual list: index 1 is always "no song", indices
 -- 2.. map to MusicPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
@@ -75,43 +77,22 @@ local function roundTo(v, decimals)
 	return math.floor(v * mult + 0.5) / mult
 end
 
--- label + Config field toggled/adjusted by each row, grouped into the three
--- sections described in the file header above.
-local CATEGORIES = {
-	{ name = "HUD", items = {
-		{ type = "boolean", key = "HUD_SHOW_WIND_SPEED", label = "Wind Speed" },
-		{ type = "boolean", key = "HUD_SHOW_WIND_DIRECTION", label = "Wind Direction" },
-		{ type = "boolean", key = "HUD_SHOW_PLAYER_SPEED", label = "Player Speed" },
-		{ type = "boolean", key = "HUD_SHOW_FPS", label = "FPS Counter" },
-	} },
-	{ name = "Sound", items = {
-		{ type = "song", label = "Song" },
-		{ type = "number", key = "MUSIC_VOLUME", label = "Volume", step = 0.05, min = 0, max = 1, percent = true },
-	} },
-	{ name = "Tuning", items = {
-		{ type = "action", label = "Open Tuning Menu", action = function() Noble.transition(TuningScene) end },
-	} },
+-- label + Config field toggled/adjusted by each row, in on-screen order
+-- (HUD rows, then Sound rows, then the Tuning row).
+local ITEMS = {
+	{ type = "boolean", key = "HUD_SHOW_WIND_SPEED", label = "Wind Speed", description = "Show the current wind speed in the HUD." },
+	{ type = "boolean", key = "HUD_SHOW_WIND_DIRECTION", label = "Wind Direction", description = "Show the current wind direction in the HUD." },
+	{ type = "boolean", key = "HUD_SHOW_PLAYER_SPEED", label = "Player Speed", description = "Show the ship's current speed in the HUD." },
+	{ type = "boolean", key = "HUD_SHOW_FPS", label = "FPS Counter", description = "Show a frames-per-second counter in the HUD." },
+	{ type = "song", label = "Song", description = "Choose the background music track (or none)." },
+	{ type = "number", key = "MUSIC_VOLUME", label = "Volume", step = 0.05, min = 0, max = 1, percent = true, description = "Adjust the background music volume." },
+	{ type = "action", label = "Open Tuning Menu", action = function() Noble.transition(TuningScene) end, description = "Open the full debug tuning menu." },
 }
-
--- Flattened once at load time, same split as TuningScene: ROWS is every row
--- in on-screen order (category headers + settings), SETTING_ROWS is just
--- the selectable subset that moveSelection/adjustValue/activate index into.
-local ROWS = {}
-local SETTING_ROWS = {}
-for _, category in ipairs(CATEGORIES) do
-	ROWS[#ROWS + 1] = { kind = "header", label = category.name }
-	for _, item in ipairs(category.items) do
-		ROWS[#ROWS + 1] = { kind = "setting", item = item }
-		SETTING_ROWS[#SETTING_ROWS + 1] = item
-	end
-end
 
 ---@param item SettingsScene.Item
 ---@return string
 local function formatValue(item)
-	if item.type == "boolean" then
-		return Config[item.key] and "[x] " or "[ ] "
-	elseif item.type == "number" then
+	if item.type == "number" then
 		if item.percent then
 			return math.floor(Config[item.key] * 100 + 0.5) .. "%"
 		end
@@ -126,54 +107,24 @@ local function formatValue(item)
 	return ""
 end
 
--- Builds a fresh playout tree highlighting `selectedIndex` (into
--- SETTING_ROWS). Rebuilt (rather than mutated in place) whenever the
--- selection or a setting changes, same as TuningScene/EnemySelectScene.
----@param selectedIndex integer
----@return table playout tree
-local function buildTree(selectedIndex)
-	local currentItem = SETTING_ROWS[selectedIndex]
-	local children = {
-		playout.text.new("Settings"),
-	}
-	for _, row in ipairs(ROWS) do
-		if row.kind == "header" then
-			children[#children + 1] = playout.text.new(row.label)
-		else
-			local item = row.item
-			local isSelected = item == currentItem
-			local text
-			if item.type == "boolean" then
-				text = formatValue(item) .. item.label
-			elseif item.type == "action" then
-				text = item.label .. " >"
-			else
-				text = item.label .. ": " .. formatValue(item)
-			end
-			children[#children + 1] = playout.box.new({
-				padding = 2,
-				hAlign = playout.kAlignStart,
-				backgroundColor = isSelected and gfx.kColorBlack or nil,
-			}, {
-				playout.text.new(text, {
-					color = isSelected and gfx.kColorWhite or gfx.kColorBlack,
-				}),
-			})
-		end
+---@param item SettingsScene.Item
+---@return string
+local function formatTitle(item)
+	if item.type == "boolean" then
+		return (Config[item.key] and "[x] " or "[ ] ") .. item.label
+	elseif item.type == "action" then
+		return item.label .. " >"
 	end
-	children[#children + 1] = playout.text.new("Left/Right adjust  Ⓐ toggle/open  Ⓑ back")
+	return item.label .. ": " .. formatValue(item)
+end
 
-	local root = playout.box.new({
-		direction = playout.kDirectionVertical,
-		spacing = 6,
-		padding = 10,
-		hAlign = playout.kAlignCenter,
-		backgroundColor = gfx.kColorWhite,
-		border = 2,
-		borderRadius = 6,
-	}, children)
-
-	return playout.tree.new(root)
+---@return { title: string, description: string }[]
+local function buildMenuItems()
+	local items = {}
+	for i, item in ipairs(ITEMS) do
+		items[i] = { title = formatTitle(item), description = item.description }
+	end
+	return items
 end
 
 ---@param ... any
@@ -185,7 +136,7 @@ function SettingsScene:init(...)
 
 	-- Built here rather than in :start() -- Noble may call :update() during
 	-- the tail of the transition in, before :start() fires (see GameScene's
-	-- init/start comments), so self.img must already exist by then.
+	-- init/start comments), so self.layout must already exist by then.
 	self:rebuild()
 end
 
@@ -200,14 +151,13 @@ function SettingsScene:finish()
 end
 
 function SettingsScene:rebuild()
-	self.tree = buildTree(self.selected)
-	self.img = self.tree:draw()
+	self.layout = MenuCard.build("Settings", "Left/Right adjust   Ⓐ toggle/open   Ⓑ back", buildMenuItems(), self.selected)
 end
 
 ---@param delta integer
 local function moveSelection(delta)
 	if not scene then return end
-	local count = #SETTING_ROWS
+	local count = #ITEMS
 	scene.selected = ((scene.selected - 1 + delta) % count) + 1
 	scene:rebuild()
 end
@@ -215,7 +165,7 @@ end
 ---@param delta integer -1 or 1
 local function adjustValue(delta)
 	if not scene then return end
-	local item = SETTING_ROWS[scene.selected]
+	local item = ITEMS[scene.selected]
 	if item.type == "number" then
 		Config[item.key] = Utils.clamp(roundTo(Config[item.key] + delta * item.step, 2), item.min, item.max)
 		if item.key == "MUSIC_VOLUME" then
@@ -232,7 +182,7 @@ end
 
 local function activate()
 	if not scene then return end
-	local item = SETTING_ROWS[scene.selected]
+	local item = ITEMS[scene.selected]
 	if item.type == "boolean" then
 		Config[item.key] = not Config[item.key]
 		if item.key == "HUD_SHOW_FPS" then
@@ -256,27 +206,24 @@ SettingsScene.inputHandler = {
 		if scene then Noble.transition(TitleScene) end
 	end,
 	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
-	-- highlight one row per CRANK_DEGREES_PER_ROW degrees turned, in either
+	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in either
 	-- direction. crankAccum carries leftover sub-threshold rotation between
 	-- calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ROW do
+		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ROW
+			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ROW do
+		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ROW
+			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }
 
 function SettingsScene:update()
 	SettingsScene.super.update(self)
-	gfx.setImageDrawMode(gfx.kDrawModeCopy)
-	local x = (Config.SCREEN_W - self.img.width) / 2
-	local y = (Config.SCREEN_H - self.img.height) / 2
-	self.img:draw(x, y)
+	MenuCard.draw(self.layout)
 end
