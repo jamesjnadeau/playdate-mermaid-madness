@@ -11,6 +11,9 @@
 -- and keeps one per stack of the upgrade (Config.STORM_CLOUD_COUNT) and owns
 -- the actual damage application (see GameScene:updateStormClouds), the same
 -- split as Tridentball/the trident collision loop.
+-- GameScene:render draws clouds last among world-space sprites (after the
+-- ship and explosions), so a cloud always shows on top of everything it
+-- overlaps rather than being hidden behind the hull or a burst.
 
 import "scripts/utilities/Config"
 import "scripts/utilities/Utils"
@@ -78,6 +81,26 @@ function StormCloud:init(x, y)
 	self.phaseTimer = nextFlashInterval()
 	self.wanderAngle = math.random() * 360
 	self.wanderTimer = nextWanderInterval()
+end
+
+-- Random point somewhere within the camera's current screen rect (the world
+-- is player-centered, see GameScene:cameraOrigin, so that rect is always
+-- Config.SCREEN_W/H centered on the player), re-rolled until it's at least
+-- Config.STORM_CLOUD_SPAWN_MIN_DISTANCE from the player -- used to place a
+-- freshly summoned cloud (GameScene:updateStormClouds) somewhere visible
+-- without landing right on top of the ship.
+---@param playerX number
+---@param playerY number
+---@return number x
+---@return number y
+function StormCloud.randomSpawnPoint(playerX, playerY)
+	local halfW, halfH = Config.SCREEN_W * 0.5, Config.SCREEN_H * 0.5
+	local x, y
+	repeat
+		x = playerX + (math.random() * 2 - 1) * halfW
+		y = playerY + (math.random() * 2 - 1) * halfH
+	until Utils.dist(x, y, playerX, playerY) >= Config.STORM_CLOUD_SPAWN_MIN_DISTANCE
+	return x, y
 end
 
 -- Moves at Config.STORM_CLOUD_SPEED, picking a direction by priority: the

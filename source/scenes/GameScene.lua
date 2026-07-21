@@ -375,7 +375,8 @@ end
 ---@param dt number
 function GameScene:updateStormClouds(dt)
 	while #self.stormClouds < Config.STORM_CLOUD_COUNT do
-		self.stormClouds[#self.stormClouds + 1] = StormCloud(self.ship.x, self.ship.y)
+		local sx, sy = StormCloud.randomSpawnPoint(self.ship.x, self.ship.y)
+		self.stormClouds[#self.stormClouds + 1] = StormCloud(sx, sy)
 	end
 
 	for _, cloud in ipairs(self.stormClouds) do
@@ -630,10 +631,10 @@ function GameScene:render()
 
 	for _, e in ipairs(self.enemies) do e:draw() end
 	for _, b in ipairs(self.tridentballs) do b:draw() end
-	for _, cloud in ipairs(self.stormClouds) do cloud:draw() end
 	self.ship:draw()
 
-	-- Explosions on top, then prune spent systems (age cap as a safety net).
+	-- Explosions above the hulls, then prune spent systems (age cap as a
+	-- safety net).
 	for i = #self.explosions, 1, -1 do
 		local ex = self.explosions[i]
 		ex.sys:update()
@@ -643,6 +644,10 @@ function GameScene:render()
 			table.remove(self.explosions, i)
 		end
 	end
+
+	-- Storm clouds drawn last of the world-space layer, on top of every
+	-- other sprite/effect above -- see StormCloud.lua's header.
+	for _, cloud in ipairs(self.stormClouds) do cloud:draw() end
 
 	-- ---- Screen space (HUD) ----
 	gfx.setDrawOffset(0, 0)

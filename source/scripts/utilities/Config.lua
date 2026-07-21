@@ -188,6 +188,12 @@ Config.STORM_CLOUD_RADIUS   = 40   -- px; damage-application radius, independent
 Config.STORM_CLOUD_WIDTH    = 80   -- px; drawn width of the cloud image (source/assets/images/storm-cloud.png)
 Config.STORM_CLOUD_HEIGHT   = 44   -- px; drawn height of the cloud image
 
+-- Initial spawn (a fresh cloud backfilled by GameScene:updateStormClouds, not
+-- the teleport-back-into-range case below): lands at a random point
+-- somewhere on screen, at least this far from the player, so it never
+-- appears directly on top of the ship. See StormCloud.randomSpawnPoint.
+Config.STORM_CLOUD_SPAWN_MIN_DISTANCE = 80 -- px; minimum distance from the player for a freshly spawned cloud
+
 -- Idle behavior (no enemy in play): follow the player until within
 -- FOLLOW_DISTANCE, then wander in a random heading, picking a new one every
 -- WANDER_MIN/MAX_INTERVAL seconds; drifting back out past FOLLOW_DISTANCE
