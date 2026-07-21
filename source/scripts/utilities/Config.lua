@@ -209,7 +209,7 @@ Config.AMMO_ICON_SIDE_OFFSET = Config.AMMO_ICON_SHAFT_LENGTH + Config.AMMO_ICON_
 Config.AUTO_LIGHTNING_UNLOCKED = 0     -- 0 = not installed, >0 = installed; set by the upgrade
 Config.AUTO_LIGHTNING_DAMAGE   = 0.5   -- health removed from an enemy per strike
 Config.AUTO_LIGHTNING_DELAY    = 2     -- seconds between strikes
-Config.AUTO_LIGHTNING_RANGE    = Config.TARGET_RANGE * 3 / 4 -- max auto-target acquisition distance
+Config.AUTO_LIGHTNING_RANGE    = Config.TARGET_RANGE / 2 -- max auto-target acquisition distance
 -- Seconds AUTO_LIGHTNING_DELAY drops by per pick of the "Rapid Autolightning"
 -- upgrade (only offered once AUTO_LIGHTNING_UNLOCKED -- see ConfigUpgrades.lua).
 Config.AUTO_LIGHTNING_DELAY_STEP = 0.25
