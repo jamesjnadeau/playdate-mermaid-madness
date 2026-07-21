@@ -204,16 +204,19 @@ end
 -- x/y scale factors), so the two config values don't need to share the
 -- source art's aspect ratio. Between lightning strikes (flashPhase == nil)
 -- the baked-gray cloudImageGrey is drawn (see the "Resting-state gray"
--- comment above); during a strike, cloudImage is drawn instead with
--- kDrawModeFillWhite/FillBlack overriding every non-transparent pixel to
--- solid white or black, to mimic a flash -- see the "Lightning flash"
--- comment in Config.lua.
+-- comment above). During a strike's "black" step, cloudImage is drawn with
+-- kDrawModeFillBlack overriding every non-transparent pixel to solid black,
+-- to mimic a flash -- see the "Lightning flash" comment in Config.lua. The
+-- "white" step instead draws cloudImage as-is (kDrawModeCopy, its normal
+-- line art): a solid-white silhouette (kDrawModeFillWhite) would flatten
+-- away the cloud's outline entirely, reading as a blank gap rather than a
+-- flash.
 function StormCloud:draw()
 	local w, h = Config.STORM_CLOUD_WIDTH, Config.STORM_CLOUD_HEIGHT
 	local x, y = self.x - w * 0.5, self.y - h * 0.5
 	local sx, sy = w / cloudImageWidth, h / cloudImageHeight
 	if self.flashPhase == "white" then
-		gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+		gfx.setImageDrawMode(gfx.kDrawModeCopy)
 		cloudImage:drawScaled(x, y, sx, sy)
 	elseif self.flashPhase == "black" then
 		gfx.setImageDrawMode(gfx.kDrawModeFillBlack)
