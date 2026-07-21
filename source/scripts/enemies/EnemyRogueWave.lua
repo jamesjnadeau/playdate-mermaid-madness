@@ -61,6 +61,17 @@ function EnemyRogueWave:init(x, y, heading)
 	self.stateTimer = 0
 end
 
+-- See Enemy:previewStats -- self.moveSpeed/turnRateMax are inherited from
+-- Enemy:init but never actually used by :update below, which charges at
+-- Config.ENEMY_ROGUEWAVE_CHARGE_SPEED and only turns (at
+-- ENEMY_ROGUEWAVE_TURN_RATE) while fully stopped, so report those instead.
+---@return number moveSpeed
+---@return number accel
+---@return number turnRate
+function EnemyRogueWave:previewStats()
+	return Config.ENEMY_ROGUEWAVE_CHARGE_SPEED, self.accel, Config.ENEMY_ROGUEWAVE_TURN_RATE
+end
+
 -- Bull-charge state machine -- replaces Enemy:update's continuous homing
 -- turn entirely, since a rogue wave only ever turns while stopped. Heading
 -- is left untouched during "charging"/"stopping" (it was locked in at the

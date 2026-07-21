@@ -149,14 +149,26 @@ end
 
 -- Two minimal stub "enemy" classes standing in for Enemy/EnemySwordfish/
 -- EnemyKraken -- enough to be constructed (EnemyType(x, y, facing)) and to
--- carry the displayName/minLevel fields EnemySelectScene and spawnEnemy's
--- level-gating actually read.
+-- carry the displayName/minLevel fields spawnEnemy's level-gating reads,
+-- plus the maxHealth/previewStats/buildBodyImage surface EnemySelectScene's
+-- preview pane reads/calls on whatever it picks from GameScene.enemyTypes --
+-- bodyImage is a fake image table (numeric width/height + a no-op :draw)
+-- rather than a real gfx.image, since these stubs never go through
+-- Ship:buildBodyImage.
 StubEnemyA = {}
 class("StubEnemyA").extends(Object)
 StubEnemyA.displayName = "Stub Enemy A"
 StubEnemyA.minLevel = 1
 function StubEnemyA:init(x, y, facing)
 	self.x, self.y, self.facing = x, y, facing
+	self.maxHealth = 1
+	self.moveSpeed, self.accel, self.turnRateMax = 10, 20, 30
+end
+function StubEnemyA:buildBodyImage()
+	self.bodyImage = { width = 10, height = 10, draw = function() end }
+end
+function StubEnemyA:previewStats()
+	return self.moveSpeed, self.accel, self.turnRateMax
 end
 
 StubEnemyB = {}
@@ -165,6 +177,14 @@ StubEnemyB.displayName = "Stub Enemy B"
 StubEnemyB.minLevel = 1
 function StubEnemyB:init(x, y, facing)
 	self.x, self.y, self.facing = x, y, facing
+	self.maxHealth = 2
+	self.moveSpeed, self.accel, self.turnRateMax = 15, 25, 35
+end
+function StubEnemyB:buildBodyImage()
+	self.bodyImage = { width = 10, height = 10, draw = function() end }
+end
+function StubEnemyB:previewStats()
+	return self.moveSpeed, self.accel, self.turnRateMax
 end
 
 GameScene.enemyTypes = { StubEnemyA, StubEnemyB }

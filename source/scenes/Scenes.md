@@ -171,7 +171,11 @@ repo's `CLAUDE.md` before adding another system-menu item anywhere).
 
 Reached only from `GameSceneTraining`'s system-menu item. Lists every entry in
 `GameScene.enemyTypes` so you can force a specific type instead of a random
-one.
+one. Styled like `UpgradeSelectScene`'s `"select"` phase — rendered via
+`MenuCard` (`source/scripts/utilities/MenuCard.lua`) with the list on the left
+half and, on the right half (`MenuCard`'s `buildDesc` hook), a preview of the
+highlighted type's body image plus its health/speed/accel/turn stats
+(`Enemy:previewStats`).
 
 - **Reached from:** `GameSceneTraining` (system menu "Select Enemy").
 - **Controls:** Up/Down (or the crank) move the highlight (wraps, defaults to

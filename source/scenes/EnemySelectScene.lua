@@ -1,19 +1,23 @@
 -- EnemySelectScene.lua
 -- Reached from GameSceneTraining's "Select Enemy" system-menu item. Lists every
--- type in GameScene.enemyTypes (rendered with the playout UI library, see
--- libraries/playout.lua) so you can force GameSceneTraining to spawn a specific
--- type on Ⓐ instead of a random one. Up/Down (or the crank) move the
--- highlight, Ⓐ confirms and returns to GameSceneTraining, Ⓑ cancels back
--- without changing the current selection.
+-- type in GameScene.enemyTypes so you can force GameSceneTraining to spawn a
+-- specific type on Ⓐ instead of a random one. Styled like UpgradeSelectScene's
+-- "select" phase -- rendered via MenuCard (source/scripts/utilities/MenuCard.lua)
+-- with the same list-on-the-left/pane-on-the-right card layout, except the
+-- right pane is a custom preview (MenuCard's buildDesc hook) showing the
+-- highlighted enemy's sprite, health, and movement stats instead of plain
+-- text. Up/Down (or the crank) move the highlight, Ⓐ confirms and returns
+-- to GameSceneTraining, Ⓑ cancels back without changing the current
+-- selection.
 
 import "scripts/utilities/Config"
+import "scripts/utilities/MenuCard"
 
 local gfx <const> = playdate.graphics
 
 ---@class EnemySelectScene : NobleScene
 ---@field selected integer index into GameScene.enemyTypes
----@field tree table playout tree, see rebuild()
----@field img _Image drawn image of the playout tree, see rebuild()
+---@field layout MenuCard.Layout see rebuild()
 ---@field crankAccum number leftover crank degrees not yet converted into a selection move, see the cranked handler
 EnemySelectScene = class("EnemySelectScene").extends(NobleScene) or EnemySelectScene
 
@@ -23,40 +27,65 @@ local scene = nil
 -- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
 local CRANK_DEGREES_PER_ITEM = 20
 
--- Builds a fresh playout tree highlighting `selectedIndex`. Rebuilt (rather
--- than mutated in place) whenever the selection changes -- the list is tiny
--- so this stays cheap and keeps the highlight logic in one place.
----@param selectedIndex integer
----@return table playout tree
-local function buildTree(selectedIndex)
-	local children = {
-		playout.text.new("Select Enemy"),
-	}
-	for i, EnemyType in ipairs(GameScene.enemyTypes) do
-		local isSelected = i == selectedIndex
-		children[#children + 1] = playout.box.new({
-			padding = 4,
-			hAlign = playout.kAlignStart,
-			backgroundColor = isSelected and gfx.kColorBlack or nil,
-		}, {
-			playout.text.new(EnemyType.displayName, {
-				color = isSelected and gfx.kColorWhite or gfx.kColorBlack,
-			}),
-		})
+-- One inert instance per GameScene.enemyTypes entry, positioned off at the
+-- origin and never updated -- exists purely so the preview pane can read its
+-- real stats (Enemy:previewStats) and bake its real body image
+-- (Ship:buildBodyImage) instead of duplicating either from Config by hand.
+-- Module-level and built lazily (not per-scene-instance) since GameScene.enemyTypes
+-- is class-level and unchanging -- every EnemySelectScene visit can share it.
+local previews = nil
+
+---@return table[]
+local function getPreviews()
+	if not previews then
+		previews = {}
+		for i, EnemyType in ipairs(GameScene.enemyTypes) do
+			previews[i] = EnemyType(0, 0, 0)
+		end
 	end
-	children[#children + 1] = playout.text.new("Ⓐ select   Ⓑ cancel")
+	return previews
+end
+
+-- MenuCard opts.buildDesc callback: draws the selected enemy's body image
+-- above its health/speed/accel/turn stats, centered in the description pane.
+---@param item MenuCard.Item
+---@param index integer
+---@param descWidth number
+---@param font any?
+---@return _Image
+local function buildEnemyDesc(item, index, descWidth, font)
+	local enemy = getPreviews()[index]
+	if not enemy.bodyImage then enemy:buildBodyImage() end
+	local moveSpeed, accel, turnRate = enemy:previewStats()
+
+	local children = {
+		playout.image.new(enemy.bodyImage),
+		playout.text.new(string.format("HP: %d", enemy.maxHealth), { font = font }),
+		playout.text.new(string.format("Speed: %d", moveSpeed), { font = font }),
+		playout.text.new(string.format("Accel: %d", accel), { font = font }),
+		playout.text.new(string.format("Turn: %d", turnRate), { font = font }),
+	}
 
 	local root = playout.box.new({
 		direction = playout.kDirectionVertical,
-		spacing = 8,
-		padding = 10,
+		spacing = 4,
+		padding = 4,
+		width = descWidth,
 		hAlign = playout.kAlignCenter,
-		backgroundColor = gfx.kColorWhite,
-		border = 2,
-		borderRadius = 6,
+		vAlign = playout.kAlignCenter,
+		font = font,
 	}, children)
 
-	return playout.tree.new(root)
+	return playout.tree.new(root):draw()
+end
+
+---@return MenuCard.Item[]
+local function buildItems()
+	local items = {}
+	for i, EnemyType in ipairs(GameScene.enemyTypes) do
+		items[i] = { title = EnemyType.displayName }
+	end
+	return items
 end
 
 ---@param ... any
@@ -77,7 +106,7 @@ function EnemySelectScene:init(...)
 
 	-- Built here rather than in :start() -- Noble may call :update() during
 	-- the tail of the transition in, before :start() fires (see GameScene's
-	-- init/start comments), so self.img must already exist by then.
+	-- init/start comments), so self.layout must already exist by then.
 	self:rebuild()
 end
 
@@ -92,8 +121,7 @@ function EnemySelectScene:finish()
 end
 
 function EnemySelectScene:rebuild()
-	self.tree = buildTree(self.selected)
-	self.img = self.tree:draw()
+	self.layout = MenuCard.build("Select Enemy", "Ⓐ select   Ⓑ cancel", buildItems(), self.selected, nil, { buildDesc = buildEnemyDesc })
 end
 
 ---@param delta integer
@@ -135,8 +163,5 @@ EnemySelectScene.inputHandler = {
 
 function EnemySelectScene:update()
 	EnemySelectScene.super.update(self)
-	gfx.setImageDrawMode(gfx.kDrawModeCopy)
-	local x = (Config.SCREEN_W - self.img.width) / 2
-	local y = (Config.SCREEN_H - self.img.height) / 2
-	self.img:draw(x, y)
+	MenuCard.draw(self.layout)
 end

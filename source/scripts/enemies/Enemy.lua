@@ -71,6 +71,18 @@ end
 -- as self.speed rises toward self.moveSpeed * self.turnRateSpeedMultiplier
 -- (see the Config comment on ENEMY_TURN_RATE_SPEED_MULTIPLIER for why that
 -- reference speed isn't just moveSpeed directly).
+-- Movement stats shown by EnemySelectScene's preview pane. Default just
+-- reads the instance fields Enemy:update actually steers by; a subclass
+-- whose update loop moves by different numbers (e.g. EnemyRogueWave, which
+-- charges at a fixed speed unrelated to self.moveSpeed) should override this
+-- to report what it actually does instead of the unused inherited fields.
+---@return number moveSpeed
+---@return number accel
+---@return number turnRate
+function Enemy:previewStats()
+	return self.moveSpeed, self.accel, self.turnRateMax
+end
+
 ---@return number
 function Enemy:currentTurnRate()
 	local maxSpeed = self.moveSpeed * self.turnRateSpeedMultiplier

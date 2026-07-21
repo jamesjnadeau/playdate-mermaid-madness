@@ -2,28 +2,36 @@
 -- Shared chrome for "pick one from a list, see its description" screens: a
 -- card frame (rounded rect, white background, black border) housing a fixed
 -- title at top, a fixed footer at bottom, and a middle row split into a
--- scrollable left-column menu (3/4 width, highlighting the selected item)
--- and a right-column description of that item (1/4 width), with a divider
+-- scrollable left-column menu (half width, highlighting the selected item)
+-- and a right-column description of that item (half width), with a divider
 -- line between them. Used by UpgradeTestScene and UpgradeSelectScene's
 -- "select" phase -- pulled out here since both need the identical layout
 -- math and the identical playout.lua workaround (see MenuCard.build's
 -- comment on the tree:layout() maxHeight cap). Also used by SettingsScene
--- (a flat list, no headers/windowing) and TuningScene (which does use both
--- -- see the `headerBefore`/`opts.maxVisible` params below).
+-- (a flat list, no headers/windowing), TuningScene (which does use both
+-- -- see the `headerBefore`/`opts.maxVisible` params below), and
+-- EnemySelectScene (which swaps the right column's plain-text description
+-- for a custom image+stats preview via `opts.buildDesc`, see below).
 --
--- Two features exist purely for TuningScene's ~90-row menu and are no-ops
--- for every other caller unless opted into:
+-- Three features exist purely for one caller apiece and are no-ops for every
+-- other caller unless opted into:
 --  - `items[i].headerBefore`: an optional non-selectable header line
 --    (category name) inserted immediately before that item in the on-screen
 --    list. Doesn't shift `selectedIndex`'s numbering -- that still counts
 --    only selectable items, exactly like a caller with no headers at all.
+--    (TuningScene only.)
 --  - `opts.maxVisible`: caps how many display rows (headers + items) are
 --    laid out at once, recentered around the selection on every rebuild
 --    (see computeWindow below) -- the same fixed-cost-per-rebuild windowing
 --    TuningScene.lua used to do itself, now shared. Omitted (the default)
 --    lays out every row, which is fine for short lists (UpgradeTestScene/
 --    UpgradeSelectScene/SettingsScene) but would make every keypress
---    relayout the entire list for a 90-row one.
+--    relayout the entire list for a 90-row one. (TuningScene only.)
+--  - `opts.buildDesc`: replaces the right column's default text description
+--    with a custom-built image, e.g. EnemySelectScene's enemy sprite +
+--    health/speed/accel/turn stats. Omitted (the default) renders
+--    `items[selectedIndex].description` as centered text. (EnemySelectScene
+--    only.)
 
 ---@class MenuCard
 MenuCard = {}
@@ -102,7 +110,7 @@ end
 ---@param items MenuCard.Item[]
 ---@param selectedIndex integer
 ---@param font any? font override (see e.g. UpgradeSelectScene's MENU_FONT), or nil for the current global font
----@param opts? { maxVisible?: integer } maxVisible windows the display rows (headers + items) to that many at once, recentered on the selection every rebuild -- see the file header comment. Omitted lays out every row.
+---@param opts? { maxVisible?: integer, buildDesc?: fun(item: MenuCard.Item, index: integer, descWidth: number, font: any): _Image } maxVisible windows the display rows (headers + items) to that many at once, recentered on the selection every rebuild -- see the file header comment. Omitted lays out every row. buildDesc, if given, replaces the default plain-text description pane with a custom one (e.g. EnemySelectScene's enemy preview + stats) -- called with the selected item and handed the description pane's width to lay out into.
 ---@return MenuCard.Layout
 function MenuCard.build(titleText, footerText, items, selectedIndex, font, opts)
 	opts = opts or {}
@@ -190,15 +198,19 @@ function MenuCard.build(titleText, footerText, items, selectedIndex, font, opts)
 	layout.listImg = layout.listTree:draw()
 	layout.selectedRect = layout.listTree:get("item" .. selectedIndex).rect
 
-	layout.descImg = playout.tree.new(playout.box.new({
-		width = descWidth,
-		padding = 4,
-		hAlign = playout.kAlignCenter,
-		vAlign = playout.kAlignCenter,
-		font = font,
-	}, {
-		playout.text.new(items[selectedIndex].description, { alignment = kTextAlignment.center }),
-	})):draw()
+	if opts.buildDesc then
+		layout.descImg = opts.buildDesc(items[selectedIndex], selectedIndex, descWidth, font)
+	else
+		layout.descImg = playout.tree.new(playout.box.new({
+			width = descWidth,
+			padding = 4,
+			hAlign = playout.kAlignCenter,
+			vAlign = playout.kAlignCenter,
+			font = font,
+		}, {
+			playout.text.new(items[selectedIndex].description, { alignment = kTextAlignment.center }),
+		})):draw()
+	end
 
 	return layout
 end
