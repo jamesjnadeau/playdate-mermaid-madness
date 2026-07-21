@@ -26,6 +26,7 @@ local gfx <const> = playdate.graphics
 ---@field tridentballs Tridentball[]
 ---@field stormClouds StormCloud[]
 ---@field stormBolts table[] active damage-bolt effects, each { points: number[], timer: number, frame: integer }, see updateStormClouds/updateStormBolts/drawStormBolts
+---@field autoLightningBolts table[] active auto-lightning strike-bolt effects, each { points: number[], timer: number, frame: integer }, see fireLightning/updateAutoLightningBolts/drawAutoLightningBolts
 ---@field explosions table[] each { sys: table, age: number, maxAge: number }, see Ship:explode
 ---@field elapsed number
 ---@field score number
@@ -51,7 +52,7 @@ local gfx <const> = playdate.graphics
 ---@field chargingSide? string "port" | "starboard"
 ---@field charge number 0-1
 ---@field target? Enemy
----@field cannonTimer number seconds until the autofire cannon can fire again, see updateCannon
+---@field lightningTimer number seconds until auto-lightning can strike again, see updateAutoLightning
 ---@field enemyTypes table[] class-level: Enemy/EnemySwordfish/EnemyKraken class tables eligible for random spawning
 GameScene = class("GameScene").extends(NobleScene) or GameScene
 
@@ -117,6 +118,7 @@ function GameScene:resetGame(sceneProperties)
 	self.tridentballs = {}
 	self.stormClouds = {} -- lazily backfilled up to Config.STORM_CLOUD_COUNT, see updateStormClouds
 	self.stormBolts = {} -- active damage-bolt effects, see updateStormClouds/updateStormBolts/drawStormBolts
+	self.autoLightningBolts = {} -- active auto-lightning strike-bolt effects, see fireLightning/updateAutoLightningBolts/drawAutoLightningBolts
 	self.explosions = {}
 	self.elapsed = 0
 	self.score = 0
@@ -152,7 +154,7 @@ function GameScene:resetGame(sceneProperties)
 	self.chargingSide = nil
 	self.charge = 0
 	self.target = nil
-	self.cannonTimer = 0 -- autofire cannon; see updateCannon -- 0 lets it fire as soon as a level starts, if unlocked and something's in range
+	self.lightningTimer = 0 -- auto-lightning; see updateAutoLightning -- 0 lets it strike as soon as a level starts, if unlocked and something's in range
 end
 
 -- Wind speed's easing rate and how often it changes, in {speedChangeRateMin,
@@ -256,8 +258,8 @@ end
 
 -- Choose the nearest enemy on the given side, within `range` (defaults to
 -- Config.TARGET_RANGE). side = nil skips the side check entirely -- used by
--- the autofire cannon, which (unlike the manual port/starboard trident)
--- targets the nearest enemy anywhere around the ship.
+-- auto-lightning, which (unlike the manual port/starboard trident) targets
+-- the nearest enemy anywhere around the ship.
 ---@param side? string "port" | "starboard" | nil for "either side"
 ---@param range? number defaults to Config.TARGET_RANGE
 ---@return Enemy?
@@ -328,43 +330,117 @@ function GameScene:currentAimSpread()
 end
 
 -- ---------------------------------------------------------------------------
--- Autofire cannon (see Config.AUTOFIRE_CANNON_* and the "Autofire Cannon"
+-- Auto-lightning (see Config.AUTO_LIGHTNING_* and the "Autolightning"
 -- upgrade in ConfigUpgrades.lua)
 -- ---------------------------------------------------------------------------
 
 -- Called once per tick from tickGame. No-ops until the upgrade is picked
--- (Config.AUTOFIRE_CANNON_UNLOCKED); once unlocked, fires unassisted at the
--- nearest enemy within Config.AUTOFIRE_CANNON_RANGE every
--- Config.AUTOFIRE_CANNON_DELAY seconds -- no charge, no player input, no
+-- (Config.AUTO_LIGHTNING_UNLOCKED); once unlocked, strikes unassisted at the
+-- nearest enemy within Config.AUTO_LIGHTNING_RANGE every
+-- Config.AUTO_LIGHTNING_DELAY seconds -- no charge, no player input, no
 -- side restriction (unlike the manual port/starboard trident). Each pick of
--- the "Autofire Cannon" upgrade beyond the first mounts another cannon
--- (Config.AUTOFIRE_CANNON_UNLOCKED counts them), so a volley fires that many
--- shots at once, all at the same target.
+-- the "Autolightning" upgrade beyond the first adds another strike
+-- (Config.AUTO_LIGHTNING_UNLOCKED counts them), so a volley strikes that many
+-- times at once, all at the same target. Bolt effects age/flash regardless
+-- of whether the upgrade is currently unlocked (there's nothing to age once
+-- it isn't -- fireLightning is the only thing that ever adds one).
 ---@param dt number
-function GameScene:updateCannon(dt)
-	if Config.AUTOFIRE_CANNON_UNLOCKED <= 0 then return end
-	if self.cannonTimer > 0 then
-		self.cannonTimer = self.cannonTimer - dt
-		return
+function GameScene:updateAutoLightning(dt)
+	if Config.AUTO_LIGHTNING_UNLOCKED > 0 then
+		if self.lightningTimer > 0 then
+			self.lightningTimer = self.lightningTimer - dt
+		else
+			local target = self:pickTarget(nil, Config.AUTO_LIGHTNING_RANGE)
+			if target then
+				for _ = 1, Config.AUTO_LIGHTNING_UNLOCKED do
+					self:fireLightning(target)
+				end
+				self.lightningTimer = Config.AUTO_LIGHTNING_DELAY
+			end
+		end
 	end
-	local target = self:pickTarget(nil, Config.AUTOFIRE_CANNON_RANGE)
-	if not target then return end
-	for _ = 1, Config.AUTOFIRE_CANNON_UNLOCKED do
-		self:fireCannon(target)
-	end
-	self.cannonTimer = Config.AUTOFIRE_CANNON_DELAY
+	self:updateAutoLightningBolts(dt)
 end
 
+-- Strikes `target` for Config.AUTO_LIGHTNING_DAMAGE immediately -- unlike
+-- Tridentball/fireCannon (its predecessor), there's no travelling projectile
+-- and thus no later collision pass to land the hit or clean up a defeated
+-- enemy, so this does that bookkeeping itself, the same as
+-- GameScene:updateStormClouds does for a Storm Cloud's damage tick. The bolt
+-- is drawn from a point just ahead of the ship's bow toward the target (the
+-- same muzzle point fireCannon used) to the target itself.
 ---@param target Enemy
-function GameScene:fireCannon(target)
+function GameScene:fireLightning(target)
 	local ship = self.ship
 	local dir = Utils.angleTo(ship.x, ship.y, target.x, target.y)
-	local speed = Config.AUTOFIRE_CANNON_SPEED
 	local hx, hy = Utils.heading(dir)
 	local bx = ship.x + hx * (Config.SHIP_LENGTH + 4)
 	local by = ship.y + hy * (Config.SHIP_LENGTH + 4)
-	self.tridentballs[#self.tridentballs + 1] = Tridentball(bx, by, dir, speed, Config.AUTOFIRE_CANNON_DAMAGE)
-	Sound.playTridentWhoosh()
+	self:addAutoLightningBolt(bx, by, target.x, target.y)
+
+	target:hit(Config.AUTO_LIGHTNING_DAMAGE)
+	Sound.playEnemyHit()
+	if not target.alive then
+		for i = #self.enemies, 1, -1 do
+			if self.enemies[i] == target then
+				self:addExplosion(target)
+				table.remove(self.enemies, i)
+				self:enemyDefeated()
+				break
+			end
+		end
+	end
+end
+
+-- Spawns one auto-lightning strike-bolt visual effect from (x1, y1) (the
+-- ship's muzzle point) to (x2, y2) (the struck enemy) -- called once per
+-- strike from fireLightning. Mirrors addStormBolt, just drawing its shape
+-- from the AUTO_LIGHTNING_BOLT_* config block instead of STORM_CLOUD_BOLT_*
+-- so the two effects can be tuned independently.
+---@param x1 number
+---@param y1 number
+---@param x2 number
+---@param y2 number
+function GameScene:addAutoLightningBolt(x1, y1, x2, y2)
+	self.autoLightningBolts[#self.autoLightningBolts + 1] = {
+		points = Utils.lightningBoltPoints(x1, y1, x2, y2, Config.AUTO_LIGHTNING_BOLT_SEGMENTS, Config.AUTO_LIGHTNING_BOLT_JITTER),
+		timer = Config.AUTO_LIGHTNING_BOLT_DURATION,
+		frame = 0,
+	}
+end
+
+-- Ages every active strike bolt by dt, dropping ones whose
+-- Config.AUTO_LIGHTNING_BOLT_DURATION has elapsed, and advances the frame
+-- counter drawAutoLightningBolts uses to flash the still-active ones.
+-- Mirrors updateStormBolts.
+---@param dt number
+function GameScene:updateAutoLightningBolts(dt)
+	for i = #self.autoLightningBolts, 1, -1 do
+		local bolt = self.autoLightningBolts[i]
+		bolt.timer = bolt.timer - dt
+		if bolt.timer <= 0 then
+			table.remove(self.autoLightningBolts, i)
+		else
+			bolt.frame = bolt.frame + 1
+		end
+	end
+end
+
+-- Draws every active strike bolt, flashing on/off every
+-- Config.AUTO_LIGHTNING_BOLT_FLASH_FRAMES frames rather than staying solid
+-- for its whole duration -- called from render() alongside the storm bolts.
+-- Mirrors drawStormBolts.
+function GameScene:drawAutoLightningBolts()
+	if #self.autoLightningBolts == 0 then return end
+	gfx.setColor(gfx.kColorBlack)
+	gfx.setLineWidth(Config.AUTO_LIGHTNING_BOLT_WIDTH)
+	for _, bolt in ipairs(self.autoLightningBolts) do
+		local flashStep = math.floor(bolt.frame / Config.AUTO_LIGHTNING_BOLT_FLASH_FRAMES)
+		if flashStep % 2 == 0 then
+			Utils.drawPolyline(bolt.points)
+		end
+	end
+	gfx.setLineWidth(1)
 end
 
 -- ---------------------------------------------------------------------------
@@ -618,7 +694,7 @@ function GameScene:tickGame()
 	end
 
 	self.ship:update(self.windDirection, self.windSpeed)
-	self:updateCannon(dt)
+	self:updateAutoLightning(dt)
 
 	self:updateSpawning(dt)
 
@@ -716,9 +792,11 @@ function GameScene:render()
 
 	-- Storm clouds (and their damage bolts) drawn last of the world-space
 	-- layer, on top of every other sprite/effect above -- see StormCloud.lua's
-	-- header.
+	-- header. Auto-lightning bolts join them here for the same reason: always
+	-- visible over whatever they're striking.
 	for _, cloud in ipairs(self.stormClouds) do cloud:draw() end
 	self:drawStormBolts()
+	self:drawAutoLightningBolts()
 
 	-- ---- Screen space (HUD) ----
 	gfx.setDrawOffset(0, 0)

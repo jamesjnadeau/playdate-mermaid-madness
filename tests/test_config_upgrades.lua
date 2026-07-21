@@ -14,14 +14,14 @@ TestConfigUpgrades = {}
 function TestConfigUpgrades:setUp()
 	self.savedShipAccel = Config.SHIP_ACCEL
 	self.savedTridentDamage = Config.TRIDENT_DAMAGE
-	self.savedAutofireCannonUnlocked = Config.AUTOFIRE_CANNON_UNLOCKED
+	self.savedAutoLightningUnlocked = Config.AUTO_LIGHTNING_UNLOCKED
 	self.savedStormCloudCount = Config.STORM_CLOUD_COUNT
 end
 
 function TestConfigUpgrades:tearDown()
 	Config.SHIP_ACCEL = self.savedShipAccel
 	Config.TRIDENT_DAMAGE = self.savedTridentDamage
-	Config.AUTOFIRE_CANNON_UNLOCKED = self.savedAutofireCannonUnlocked
+	Config.AUTO_LIGHTNING_UNLOCKED = self.savedAutoLightningUnlocked
 	Config.STORM_CLOUD_COUNT = self.savedStormCloudCount
 	Config.TEST_STAT = nil
 end
@@ -58,7 +58,7 @@ end
 -- upgrade's install-count field) should flip false -> true as soon as its
 -- prerequisite's count goes above 0, and back with it.
 local GATED_UPGRADES = {
-	{ id = "autofire_cannon_delay", prereqKey = "AUTOFIRE_CANNON_UNLOCKED" },
+	{ id = "auto_lightning_delay", prereqKey = "AUTO_LIGHTNING_UNLOCKED" },
 	{ id = "storm_cloud_damage", prereqKey = "STORM_CLOUD_COUNT" },
 	{ id = "storm_cloud_speed", prereqKey = "STORM_CLOUD_COUNT" },
 }
@@ -79,25 +79,25 @@ function TestConfigUpgrades:testGatedUpgradesRequirePrerequisiteInstalled()
 	end
 end
 
--- "Autofire Cannon" is the one upgrade with a `descriptionFor` -- its text
+-- "Autolightning" is the one upgrade with a `descriptionFor` -- its text
 -- should switch from the first-install description to a "mounts another"
--- one once AUTOFIRE_CANNON_UNLOCKED is already > 0, and Config.upgradeDescription/
+-- one once AUTO_LIGHTNING_UNLOCKED is already > 0, and Config.upgradeDescription/
 -- Config.upgradeMenuItems (what UpgradeSelectScene/UpgradeTestScene actually
 -- call) should resolve that dynamically rather than returning the static
 -- `description` field.
-function TestConfigUpgrades:testAutofireCannonDescriptionChangesOnceInstalled()
+function TestConfigUpgrades:testAutoLightningDescriptionChangesOnceInstalled()
 	local upgrade = nil
 	for _, u in ipairs(Config.UPGRADES) do
-		if u.id == "autofire_cannon" then upgrade = u end
+		if u.id == "auto_lightning" then upgrade = u end
 	end
-	lu.assertNotNil(upgrade, "missing upgrade autofire_cannon")
+	lu.assertNotNil(upgrade, "missing upgrade auto_lightning")
 	lu.assertNotNil(upgrade.descriptionFor)
 
-	Config.AUTOFIRE_CANNON_UNLOCKED = 0
+	Config.AUTO_LIGHTNING_UNLOCKED = 0
 	local firstInstall = Config.upgradeDescription(upgrade)
 	lu.assertEquals(firstInstall, upgrade.description)
 
-	Config.AUTOFIRE_CANNON_UNLOCKED = 1
+	Config.AUTO_LIGHTNING_UNLOCKED = 1
 	local repeatPick = Config.upgradeDescription(upgrade)
 	lu.assertNotEquals(repeatPick, firstInstall)
 	lu.assertNotNil(string.find(repeatPick, "another"))

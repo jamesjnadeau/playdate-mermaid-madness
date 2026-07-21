@@ -22,8 +22,7 @@ Tridentball = class("Tridentball").extends() or Tridentball
 ---@param y number
 ---@param dirDeg number
 ---@param speed number
----@param damage? number defaults to Config.TRIDENT_DAMAGE -- the autofire cannon passes its own value here
-function Tridentball:init(x, y, dirDeg, speed, damage)
+function Tridentball:init(x, y, dirDeg, speed)
 	Tridentball.super.init(self)
 	self.x = x
 	self.y = y
@@ -33,7 +32,7 @@ function Tridentball:init(x, y, dirDeg, speed, damage)
 	self.vy = hy * speed
 	self.life = Config.TRIDENT_LIFETIME
 	self.radius = Config.TRIDENT_RADIUS
-	self.damage = damage or Config.TRIDENT_DAMAGE
+	self.damage = Config.TRIDENT_DAMAGE
 	self.dead = false
 end
 

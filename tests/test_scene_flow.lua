@@ -573,13 +573,13 @@ end
 -- --- UpgradeSelectScene / WindShiftScene ----------------------------------
 
 function TestSceneFlow:testUpgradeSelectExcludesUnavailableUpgrades()
-	-- Config.AUTOFIRE_CANNON_UNLOCKED/STORM_CLOUD_COUNT default to 0 (setUp
+	-- Config.AUTO_LIGHTNING_UNLOCKED/STORM_CLOUD_COUNT default to 0 (setUp
 	-- restores a full snapshot each test), so every gated upgrade ("Rapid
-	-- Autocannon", "Charged Storm", "Squalling Winds" -- each requires its
+	-- Autolightning", "Charged Storm", "Squalling Winds" -- each requires its
 	-- own prerequisite already installed) must never be drawn.
 	Noble.transition(UpgradeSelectScene, nil, nil, nil, { level = 2, completedLevel = 1, totalDefeated = 0 })
 	local scene = Noble.currentScene()
-	local gatedIds = { autofire_cannon_delay = true, storm_cloud_damage = true, storm_cloud_speed = true }
+	local gatedIds = { auto_lightning_delay = true, storm_cloud_damage = true, storm_cloud_speed = true }
 	for _, upgrade in ipairs(scene.upgrades) do
 		lu.assertNil(gatedIds[upgrade.id], upgrade.id .. " should have been excluded while locked")
 	end

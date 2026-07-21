@@ -3,7 +3,7 @@
 -- every entry in Config.UPGRADES (source/scripts/player/ConfigUpgrades.lua) --
 -- unlike UpgradeSelectScene's random draw of 3, the whole pool, and unlike
 -- UpgradeSelectScene's pickUpgrades, ignoring each entry's `available`
--- predicate (e.g. "Rapid Autocannon" normally requires the Autofire Cannon
+-- predicate (e.g. "Rapid Autolightning" normally requires Autolightning
 -- already installed) -- this is a dev/test tool, so every upgrade is always
 -- reachable here regardless of prerequisites. Up/Down (or the crank) move
 -- the highlight, Ⓐ applies the highlighted upgrade (via Config.applyUpgrade,

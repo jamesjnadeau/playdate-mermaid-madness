@@ -156,7 +156,7 @@ Config.NO_TARGET_MARK_OFFSET = 30 -- distance (px) from the ship's center to tha
 -- Trident Ammo --
 ----------
 -- Gates the manual port/starboard trident (GameScene:beginCharge/releaseCharge)
--- -- the autofire cannon and Storm Cloud have their own independent limiters
+-- -- auto-lightning and Storm Cloud have their own independent limiters
 -- (a cooldown timer, a damage-tick interval) and don't draw from this pool.
 -- See Player:consumeAmmo/updateAmmo.
 Config.AMMO_MAX   = 5   -- max tridents the ship can carry; set by the "Bigger Quiver" upgrade
@@ -197,20 +197,37 @@ Config.AMMO_ICON_FORWARD_OFFSET = Config.SHIP_LENGTH * 0.5
 Config.AMMO_ICON_SIDE_OFFSET = Config.AMMO_ICON_SHAFT_LENGTH + Config.AMMO_ICON_PRONG_LENGTH
 
 ---------------------
--- Autofire Cannon --
+-- Auto-Lightning --
 ---------------------
--- A single cannon, unlocked via the "Autofire Cannon" upgrade (see
--- ConfigUpgrades.lua), that fires on its own at the nearest enemy in range --
--- no player input, unlike the manual port/starboard trident. See GameScene's
--- cannonTimer tick and fireCannon.
-Config.AUTOFIRE_CANNON_UNLOCKED = 0     -- 0 = not installed, >0 = installed; set by the upgrade
-Config.AUTOFIRE_CANNON_DAMAGE   = 0.5     -- health removed from an enemy per cannon hit
-Config.AUTOFIRE_CANNON_DELAY    = 2   -- seconds between shots
-Config.AUTOFIRE_CANNON_RANGE    = Config.TARGET_RANGE * 3 / 4 -- max auto-target acquisition distance
-Config.AUTOFIRE_CANNON_SPEED    = Config.TRIDENT_SPEED -- muzzle speed of each cannon shot
--- Seconds AUTOFIRE_CANNON_DELAY drops by per pick of the "Rapid Autocannon"
--- upgrade (only offered once AUTOFIRE_CANNON_UNLOCKED -- see ConfigUpgrades.lua).
-Config.AUTOFIRE_CANNON_DELAY_STEP = 0.25
+-- Auto-targeted lightning strikes, unlocked via the "Autolightning" upgrade
+-- (see ConfigUpgrades.lua), that strike the nearest enemy in range on their
+-- own -- no player input, unlike the manual port/starboard trident. Unlike
+-- Tridentball, a strike deals its damage the instant it fires rather than
+-- traveling as a projectile -- only the bolt *visual* below travels, and
+-- only in the sense of being drawn for a moment. See GameScene's
+-- lightningTimer tick and fireLightning.
+Config.AUTO_LIGHTNING_UNLOCKED = 0     -- 0 = not installed, >0 = installed; set by the upgrade
+Config.AUTO_LIGHTNING_DAMAGE   = 0.5   -- health removed from an enemy per strike
+Config.AUTO_LIGHTNING_DELAY    = 2     -- seconds between strikes
+Config.AUTO_LIGHTNING_RANGE    = Config.TARGET_RANGE * 3 / 4 -- max auto-target acquisition distance
+-- Seconds AUTO_LIGHTNING_DELAY drops by per pick of the "Rapid Autolightning"
+-- upgrade (only offered once AUTO_LIGHTNING_UNLOCKED -- see ConfigUpgrades.lua).
+Config.AUTO_LIGHTNING_DELAY_STEP = 0.25
+
+-- Strike bolt visual: a jagged lightning line drawn from the ship to
+-- whichever enemy a strike just hit (see GameScene:fireLightning/
+-- addAutoLightningBolt/updateAutoLightningBolts/drawAutoLightningBolts) --
+-- the same idea, shape, and fields as Storm Cloud's STORM_CLOUD_BOLT_* block
+-- below, just kept as its own config block so the two effects can be tuned
+-- independently. DURATION is how long the bolt stays on screen after the
+-- strike; while shown, it flashes on/off every FLASH_FRAMES frames rather
+-- than drawing solid. SEGMENTS/JITTER control the zigzag shape (see
+-- Utils.lightningBoltPoints) and WIDTH is the stroke thickness.
+Config.AUTO_LIGHTNING_BOLT_DURATION     = 0.25 -- seconds a strike bolt stays on screen
+Config.AUTO_LIGHTNING_BOLT_FLASH_FRAMES = 2    -- frames each on/off flash step lasts while a bolt is shown
+Config.AUTO_LIGHTNING_BOLT_SEGMENTS     = 6    -- jagged line segments making up a bolt
+Config.AUTO_LIGHTNING_BOLT_JITTER       = 10   -- px; max perpendicular offset of each interior segment joint
+Config.AUTO_LIGHTNING_BOLT_WIDTH        = 2    -- stroke width (px) of the bolt line
 
 -----------------
 -- Storm Cloud --

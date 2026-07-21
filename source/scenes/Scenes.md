@@ -333,7 +333,7 @@ without needing to know what it is — see `GameSceneMain.gameSceneClass`.
 
 Offers 3 randomly-drawn entries from `Config.UPGRADES`
 (`source/scripts/player/ConfigUpgrades.lua`) — entries with an `available` predicate
-(e.g. "Rapid Autocannon", which requires the Autofire Cannon upgrade already
+(e.g. "Rapid Autolightning", which requires the Autolightning upgrade already
 installed) are excluded from the draw pool until it returns true; see
 `pickUpgrades` — rendered with
 [playout](../libraries/playout.lua). Two phases: `"select"` (pick one) then

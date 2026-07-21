@@ -24,7 +24,7 @@
 ---@field maxValue? number clamps the result
 ---@field format fun(v: number): string
 ---@field available? fun(): boolean if present, only offered by UpgradeSelectScene's pickUpgrades when this returns true (e.g. a prerequisite upgrade already installed); omitted means always offered. UpgradeTestScene deliberately ignores this -- see its header comment.
----@field descriptionFor? fun(current: number): string if present, used instead of the static `description` to render text specific to the current Config[configKey] value (e.g. "Autofire Cannon" reads differently once a cannon is already mounted) -- see Config.upgradeDescription.
+---@field descriptionFor? fun(current: number): string if present, used instead of the static `description` to render text specific to the current Config[configKey] value (e.g. "Autolightning" reads differently once a strike is already mounted) -- see Config.upgradeDescription.
 
 ---@type Config.Upgrade[]
 Config.UPGRADES = {
@@ -70,31 +70,31 @@ Config.UPGRADES = {
 		format = function(v) return string.format("%.2f", v) .. " chg/s" end,
 	},
 	{
-		id = "autofire_cannon",
-		title = "Autofire Cannon",
-		description = "Mounts a cannon that fires on its own at the nearest enemy in range.",
+		id = "auto_lightning",
+		title = "Autolightning",
+		description = "Strikes the nearest enemy in range with lightning on its own.",
 		descriptionFor = function(current)
 			if current <= 0 then
-				return "Mounts a cannon that fires on its own at the nearest enemy in range."
+				return "Strikes the nearest enemy in range with lightning on its own."
 			end
-			return "Adds another autofire cannon -- fires an extra shot at the nearest enemy every volley."
+			return "Adds another auto-lightning strike -- hits an extra enemy every volley."
 		end,
-		configKey = "AUTOFIRE_CANNON_UNLOCKED",
+		configKey = "AUTO_LIGHTNING_UNLOCKED",
 		delta = 1,
 		maxValue = 5,
 		format = function(v)
 			local count = math.floor(v)
-			return count > 0 and (count .. (count == 1 and " cannon" or " cannons")) or "Not installed"
+			return count > 0 and (count .. (count == 1 and " strike" or " strikes")) or "Not installed"
 		end,
 	},
 	{
-		id = "autofire_cannon_delay",
-		title = "Rapid Autocannon",
-		description = "Shortens the delay between autofire cannon shots. Requires the Autofire Cannon.",
-		configKey = "AUTOFIRE_CANNON_DELAY",
-		delta = -Config.AUTOFIRE_CANNON_DELAY_STEP,
+		id = "auto_lightning_delay",
+		title = "Rapid Autolightning",
+		description = "Shortens the delay between auto-lightning strikes. Requires Autolightning.",
+		configKey = "AUTO_LIGHTNING_DELAY",
+		delta = -Config.AUTO_LIGHTNING_DELAY_STEP,
 		minValue = 0.5,
-		available = function() return Config.AUTOFIRE_CANNON_UNLOCKED > 0 end,
+		available = function() return Config.AUTO_LIGHTNING_UNLOCKED > 0 end,
 		format = function(v) return string.format("%.2f", v) .. " s" end,
 	},
 	{
@@ -177,8 +177,8 @@ end
 
 -- Resolves the description to show for `upgrade` given the current value at
 -- Config[upgrade.configKey] -- most upgrades have a fixed description, but
--- ones with a `descriptionFor` (e.g. "Autofire Cannon", which reads
--- differently once a cannon is already mounted) render text specific to
+-- ones with a `descriptionFor` (e.g. "Autolightning", which reads
+-- differently once a strike is already mounted) render text specific to
 -- that value instead.
 ---@param upgrade Config.Upgrade
 ---@return string

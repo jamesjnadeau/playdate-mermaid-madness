@@ -52,8 +52,8 @@ local CRANK_DEGREES_PER_ITEM = 20
 
 -- Draws `count` distinct entries from Config.UPGRADES without replacement
 -- (falls back to fewer if the pool is smaller than `count`). Entries with an
--- `available` predicate (e.g. "Rapid Autocannon" requiring the Autofire
--- Cannon already be installed) are skipped unless it currently returns true.
+-- `available` predicate (e.g. "Rapid Autolightning" requiring Autolightning
+-- already be installed) are skipped unless it currently returns true.
 ---@param count integer
 ---@return Config.Upgrade[]
 local function pickUpgrades(count)
