@@ -116,4 +116,41 @@ Config.ENEMY_KRAKEN_MIN_LEVEL  = 3   -- unlocked starting this level, tougher th
 Config.ENEMY_KRAKEN_HEALTH_BAR_OFFSET = (Config.ENEMY_KRAKEN_DOT_OFFSET + Config.ENEMY_KRAKEN_DOT_SPACING
 	+ Config.ENEMY_KRAKEN_DOT_RADIUS) - Config.ENEMY_KRAKEN_BODY_RADIUS
 
+---------------------------
+-- Enemy: Rogue Wave --
+---------------------------
+-- A bull-charge Enemy variant (see EnemyRogueWave.lua): charges in a
+-- straight line at CHARGE_SPEED for CHARGE_LENGTH seconds, brakes to a full
+-- stop, turns in place to face the target for up to TURN_TIME seconds, then
+-- charges again -- it never turns while moving. CHARGE_SPEED/CHARGE_LENGTH/
+-- TURN_TIME are the three tunable knobs (speed, charge length, timing).
+Config.ENEMY_ROGUEWAVE_CHARGE_SPEED = math.floor(Config.ENEMY_SPEED * 2.0)  -- pixels / second while charging, much faster than a steady-homing enemy
+Config.ENEMY_ROGUEWAVE_ACCEL       = math.floor(Config.ENEMY_ACCEL * 2.5)  -- pixels / second^2 easing up to CHARGE_SPEED
+Config.ENEMY_ROGUEWAVE_STOP_ACCEL  = Config.ENEMY_ROGUEWAVE_ACCEL * 2      -- brakes harder than it winds up, so the stop reads as a deliberate dig-in
+Config.ENEMY_ROGUEWAVE_STOP_SPEED_THRESHOLD = 5  -- px/second below which "stopping" counts as fully stopped and turning can begin
+Config.ENEMY_ROGUEWAVE_CHARGE_LENGTH = 1.0  -- seconds spent charging before braking to a stop
+Config.ENEMY_ROGUEWAVE_TURN_TIME    = 0.6   -- seconds spent stopped-and-turning before charging again
+Config.ENEMY_ROGUEWAVE_TURN_RATE    = 220   -- degrees / second while stopped -- fast, since this is the only time it can turn at all
+Config.ENEMY_ROGUEWAVE_LENGTH = 34  -- half-length of the outer ellipse, elongated compared to the base enemy's hull
+Config.ENEMY_ROGUEWAVE_BEAM   = 10  -- half-width of the outer ellipse
+-- The crescent look (see EnemyRogueWave:drawBodyLocal) comes from cutting a
+-- second, smaller ellipse out of the outer one, shifted toward the stern by
+-- HOLLOW_OFFSET. HOLLOW_SCALE and HOLLOW_OFFSET are chosen so the cut
+-- ellipse stays fully inside the outer one (HOLLOW_OFFSET + LENGTH *
+-- HOLLOW_SCALE <= LENGTH) -- otherwise its stroked outline would poke out
+-- past the filled body as a disconnected arc.
+Config.ENEMY_ROGUEWAVE_HOLLOW_SCALE  = 0.75
+Config.ENEMY_ROGUEWAVE_HOLLOW_OFFSET = 6
+Config.ENEMY_ROGUEWAVE_RADIUS = 22  -- collision radius -- smaller than LENGTH since the crescent's horns taper to almost nothing
+Config.ENEMY_ROGUEWAVE_HEALTH = 2
+Config.ENEMY_ROGUEWAVE_DAMAGE = Config.ENEMY_DAMAGE * 1.5  -- a charging wave hits harder than a steady-homing enemy
+Config.ENEMY_ROGUEWAVE_WIND_MULTIPLIER = Config.ENEMY_WIND_MULTIPLIER
+Config.ENEMY_ROGUEWAVE_COLOR         = gfx.kColorBlack
+Config.ENEMY_ROGUEWAVE_OUTLINE_COLOR = gfx.kColorWhite
+Config.ENEMY_ROGUEWAVE_MIN_LEVEL = 4  -- unlocked starting this level -- see Config.ENEMY_MIN_LEVEL
+-- The crescent's bow-side tip reaches all the way to LENGTH, well past the
+-- RADIUS collision circle -- see Enemy.healthBarOffset -- so nudge the
+-- health bar out by the difference to clear it regardless of heading.
+Config.ENEMY_ROGUEWAVE_HEALTH_BAR_OFFSET = Config.ENEMY_ROGUEWAVE_LENGTH - Config.ENEMY_ROGUEWAVE_RADIUS
+
 return Config
