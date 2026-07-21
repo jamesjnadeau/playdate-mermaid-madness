@@ -12,17 +12,8 @@
 -- history, not a rigid shape rotated with the head, so this class tracks its
 -- own self.trail and overrides :draw() entirely rather than going through
 -- Ship's cached-body-image + drawRotated path (see EnemySeaSerpent:updateTrail
--- / :draw). A black triangle head leads the way, drawn frontmost.
---
--- On top of that, it cycles between surfaced and submerged (see
--- EnemySeaSerpent:updateSurfaceCycle/visiblePartCount): fully visible for
--- SURFACE_TIME seconds, fully hidden for DIVE_TIME, with a REVEAL_TIME
--- transition on each side where the head appears/leads first and the body
--- ellipses reveal in behind it one at a time (or, diving, disappear tail
--- first) -- like a sea serpent breaching and submerging. Movement and
--- collision keep running the whole time; only the drawing is gated, so it
--- can still ram the player while submerged. All tuning lives in
--- Config.ENEMY_SEA_SERPENT_* (see ConfigEnemy.lua).
+-- / :draw). A black triangle head leads the way, drawn frontmost. All tuning
+-- lives in Config.ENEMY_SEA_SERPENT_* (see ConfigEnemy.lua).
 
 import "scripts/utilities/Config"
 import "scripts/enemies/ConfigEnemy"
@@ -46,8 +37,6 @@ local gfx <const> = playdate.graphics
 ---@field turnTarget number heading (degrees) the current "turning" pivot is steering toward
 ---@field turnTimer number seconds elapsed in the current "turning" pivot
 ---@field zigSign integer 1 | -1, alternated each pivot to zig-zag left/right of the direct line to the target
----@field cycleState string "surfaced" | "hiding" | "submerged" | "revealing" -- see EnemySeaSerpent:updateSurfaceCycle
----@field cycleTimer number seconds elapsed in the current cycleState
 EnemySeaSerpent = class("EnemySeaSerpent").extends(Enemy) or EnemySeaSerpent
 
 -- Unlocked starting this level (see Config.ENEMY_SEA_SERPENT_MIN_LEVEL /
@@ -99,12 +88,6 @@ function EnemySeaSerpent:init(x, y, heading)
 	self.turnTarget = self.heading
 	self.turnTimer = 0
 	self.zigSign = 1
-
-	-- Starts surfaced (fully visible) so a freshly spawned serpent is an
-	-- immediately visible threat rather than appearing to do nothing for up
-	-- to DIVE_TIME seconds -- see updateSurfaceCycle.
-	self.cycleState = "surfaced"
-	self.cycleTimer = 0
 end
 
 -- See Enemy:previewStats -- self.turnRateMax/Min are inherited from
@@ -170,16 +153,13 @@ function EnemySeaSerpent:update(targetX, targetY, windDirection, windSpeed)
 	end
 
 	self:updateTrail()
-	self:updateSurfaceCycle(dt)
 	self:updateLeash(targetX, targetY, dt)
 end
 
 -- Records a new trail sample -- the head's own position -- each time it has
 -- travelled segmentSeparation px since the last one, and drops the oldest
 -- sample past segmentCount so the trail always has exactly one entry per body
--- segment. Runs every frame regardless of the surface/dive cycle so the body
--- keeps a coherent shape underneath the visibility gating in :draw -- see
--- updateSurfaceCycle.
+-- segment.
 function EnemySeaSerpent:updateTrail()
 	self.trailDist = self.trailDist + Utils.dist(self.prevX, self.prevY, self.x, self.y)
 	self.prevX, self.prevY = self.x, self.y
@@ -190,56 +170,6 @@ function EnemySeaSerpent:updateTrail()
 	end
 	while #self.trail > self.segmentCount do
 		table.remove(self.trail)
-	end
-end
-
--- Surfaced/submerged cycle: alternates SURFACE_TIME (fully visible) and
--- DIVE_TIME (fully hidden), with a REVEAL_TIME transition on each side --
--- "revealing" on the way up, "hiding" on the way down. See visiblePartCount
--- for how this state is turned into an actual part count to draw.
----@param dt number
-function EnemySeaSerpent:updateSurfaceCycle(dt)
-	self.cycleTimer = self.cycleTimer + dt
-
-	if self.cycleState == "surfaced" then
-		if self.cycleTimer >= Config.ENEMY_SEA_SERPENT_SURFACE_TIME then
-			self.cycleState, self.cycleTimer = "hiding", 0
-		end
-	elseif self.cycleState == "hiding" then
-		if self.cycleTimer >= Config.ENEMY_SEA_SERPENT_REVEAL_TIME then
-			self.cycleState, self.cycleTimer = "submerged", 0
-		end
-	elseif self.cycleState == "submerged" then
-		if self.cycleTimer >= Config.ENEMY_SEA_SERPENT_DIVE_TIME then
-			self.cycleState, self.cycleTimer = "revealing", 0
-		end
-	elseif self.cycleState == "revealing" then
-		if self.cycleTimer >= Config.ENEMY_SEA_SERPENT_REVEAL_TIME then
-			self.cycleState, self.cycleTimer = "surfaced", 0
-		end
-	end
-end
-
--- How many of the (head + segmentCount) parts are currently visible, head
--- first: 0 is fully submerged, 1 is head-only, segmentCount + 1 is fully
--- surfaced. "revealing" counts up from 0 (head appears, then leads the body
--- ellipses into view one at a time behind it); "hiding" counts back down the
--- same way, so the tail-most segment disappears first and the head goes
--- under last -- see :draw, which reads this to decide what to blit.
----@return integer
-function EnemySeaSerpent:visiblePartCount()
-	local total = self.segmentCount + 1
-	if self.cycleState == "surfaced" then
-		return total
-	elseif self.cycleState == "submerged" then
-		return 0
-	end
-
-	local frac = self.cycleTimer / Config.ENEMY_SEA_SERPENT_REVEAL_TIME
-	if self.cycleState == "revealing" then
-		return math.floor(frac * total)
-	else -- "hiding"
-		return math.floor((1 - frac) * total)
 	end
 end
 
@@ -314,21 +244,16 @@ end
 -- Ship:draw/buildBodyImage: the body isn't a rigid shape that rotates with
 -- the head, it's a chain of independently-positioned trail samples (see
 -- updateTrail), so each part is drawn straight in world space instead of
--- baked into one rotated image. visiblePartCount gates how many parts (head
--- first) actually get drawn this frame -- see updateSurfaceCycle.
+-- baked into one rotated image.
 function EnemySeaSerpent:draw()
 	if not self.alive then return end
-
-	local visible = self:visiblePartCount()
-	if visible <= 0 then return end
 
 	gfx.setColor(self.color)
 
 	-- Body first (tail to head) so the head triangle ends up drawn on top of
 	-- the foremost body segment, reading as the segments trailing behind it
 	-- rather than the head poking out from underneath.
-	local segmentsVisible = visible - 1
-	for i = segmentsVisible, 1, -1 do
+	for i = self.segmentCount, 1, -1 do
 		local p = self.trail[i]
 		gfx.fillEllipseInRect(p.x - self.segmentRadius, p.y - self.segmentRadius,
 			self.segmentRadius * 2, self.segmentRadius * 2)

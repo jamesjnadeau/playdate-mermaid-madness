@@ -160,12 +160,6 @@ Config.ENEMY_ROGUEWAVE_HEALTH_BAR_OFFSET = Config.ENEMY_ROGUEWAVE_LENGTH - Confi
 -- for LEG_DISTANCE px, pivots by ZIGZAG_ANGLE degrees off the line to its
 -- target (alternating left/right each time), then swims straight again,
 -- tracing a zig-zag path toward the player instead of a direct homing curve.
--- It also cycles between surfaced and submerged: fully visible for
--- SURFACE_TIME seconds, hidden for DIVE_TIME, with a REVEAL_TIME transition
--- on each side where the head triangle appears/leads first and the trailing
--- body ellipses reveal (or hide) one at a time behind it -- see
--- EnemySeaSerpent:updateSurfaceCycle/visiblePartCount. Movement and collision
--- are unaffected by this -- it can still be rammed while submerged.
 Config.ENEMY_SEA_SERPENT_SPEED = math.floor(Config.ENEMY_SPEED * 0.9)  -- pixels / second, a bit slower than the base enemy -- it covers ground via its long legs, not raw speed
 Config.ENEMY_SEA_SERPENT_ACCEL = Config.ENEMY_ACCEL
 Config.ENEMY_SEA_SERPENT_TURN_RATE = 140  -- degrees / second while pivoting between zig-zag legs
@@ -190,10 +184,6 @@ Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 8
 Config.ENEMY_SEA_SERPENT_SEGMENT_COUNT = 6
 Config.ENEMY_SEA_SERPENT_SEGMENT_RADIUS = 12  -- px radius of each body ellipse
 Config.ENEMY_SEA_SERPENT_SEGMENT_SEPARATION = 36  -- px between consecutive segment centers along the path
--- Surface/dive cycle timing (seconds) -- see EnemySeaSerpent:updateSurfaceCycle.
-Config.ENEMY_SEA_SERPENT_SURFACE_TIME = 4.0  -- fully visible
-Config.ENEMY_SEA_SERPENT_DIVE_TIME = 2.5  -- fully hidden
-Config.ENEMY_SEA_SERPENT_REVEAL_TIME = 0.8  -- transition spent revealing (surfacing) or hiding (diving)
 -- Nothing reaches past the collision radius in the direction that matters for
 -- the health bar (only the trailing body extends further, and that's behind
 -- the head, not below it) -- see Enemy.healthBarOffset.
