@@ -22,12 +22,33 @@ local gfx <const> = playdate.graphics
 
 -- Cloud artwork, drawn at Config.STORM_CLOUD_WIDTH x STORM_CLOUD_HEIGHT (see
 -- StormCloud:draw) rather than at this file's native size -- see
--- art-src/cloud.png for the hi-res original. That original's fill is a
--- near-white gray (242/255) that pdc's 1-bit dither would render as almost
--- solid white; storm-cloud.png recolors the fill to 50% gray first so it
--- dithers to a visibly gray checkerboard instead.
+-- art-src/cloud.png for the hi-res original.
 local cloudImage = gfx.image.new("assets/images/storm-cloud")
+assert(cloudImage, "missing assets/images/storm-cloud")
 local cloudImageWidth, cloudImageHeight = cloudImage:getSize()
+
+-- Resting-state gray: cloudImage itself is drawn solid (kDrawModeCopy) only
+-- during a lightning flash's white/black steps -- between flashes, drawing
+-- cloudImage as-is isn't reliably gray (pdc's 1-bit conversion of a flat-
+-- colored source PNG doesn't dependably come out as an even checkerboard on
+-- device). Instead, bake an explicit dithered checkerboard here, once, at
+-- Config.STORM_CLOUD_GREY_ALPHA coverage: fill the canvas white, then
+-- overdraw a dither pattern of black pixels at that coverage -- both draws
+-- land on the same offscreen image, so the result is one flat opaque
+-- black/white checker (no transparency), which then gets clipped to
+-- cloudImage's own silhouette via its mask so it still reads as the cloud's
+-- shape rather than a gray rectangle.
+local cloudImageGrey = gfx.image.new(cloudImageWidth, cloudImageHeight)
+gfx.pushContext(cloudImageGrey)
+	gfx.setColor(gfx.kColorWhite)
+	gfx.fillRect(0, 0, cloudImageWidth, cloudImageHeight)
+	gfx.setDitherPattern(Config.STORM_CLOUD_GREY_ALPHA, gfx.image.kDitherTypeBayer4x4)
+	gfx.fillRect(0, 0, cloudImageWidth, cloudImageHeight)
+	gfx.setColor(gfx.kColorBlack) -- clear the dither pattern so it doesn't leak into later draws
+gfx.popContext()
+if cloudImage:hasMask() then
+	cloudImageGrey:setMaskImage(cloudImage:getMaskImage())
+end
 
 -- Random gap before the next lightning strike, see the "Lightning flash"
 -- comment in Config.lua and StormCloud:update.
@@ -173,23 +194,28 @@ function StormCloud:update(enemies, playerX, playerY, dt)
 	end
 end
 
--- Drawn from cloudImage, scaled to Config.STORM_CLOUD_WIDTH x
--- STORM_CLOUD_HEIGHT and centered on (self.x, self.y). Width/height scale
--- independently (drawScaled's separate x/y scale factors), so the two config
--- values don't need to share the source art's aspect ratio. Between
--- lightning strikes (flashPhase == nil) this is the only thing drawn; during
--- a strike, kDrawModeFillWhite/FillBlack override every non-transparent
--- pixel of cloudImage to solid white or black instead, to mimic a flash --
--- see the "Lightning flash" comment in Config.lua.
+-- Scaled to Config.STORM_CLOUD_WIDTH x STORM_CLOUD_HEIGHT and centered on
+-- (self.x, self.y). Width/height scale independently (drawScaled's separate
+-- x/y scale factors), so the two config values don't need to share the
+-- source art's aspect ratio. Between lightning strikes (flashPhase == nil)
+-- the baked-gray cloudImageGrey is drawn (see the "Resting-state gray"
+-- comment above); during a strike, cloudImage is drawn instead with
+-- kDrawModeFillWhite/FillBlack overriding every non-transparent pixel to
+-- solid white or black, to mimic a flash -- see the "Lightning flash"
+-- comment in Config.lua.
 function StormCloud:draw()
 	local w, h = Config.STORM_CLOUD_WIDTH, Config.STORM_CLOUD_HEIGHT
+	local x, y = self.x - w * 0.5, self.y - h * 0.5
+	local sx, sy = w / cloudImageWidth, h / cloudImageHeight
 	if self.flashPhase == "white" then
 		gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
+		cloudImage:drawScaled(x, y, sx, sy)
 	elseif self.flashPhase == "black" then
 		gfx.setImageDrawMode(gfx.kDrawModeFillBlack)
+		cloudImage:drawScaled(x, y, sx, sy)
 	else
 		gfx.setImageDrawMode(gfx.kDrawModeCopy)
+		cloudImageGrey:drawScaled(x, y, sx, sy)
 	end
-	cloudImage:drawScaled(self.x - w * 0.5, self.y - h * 0.5, w / cloudImageWidth, h / cloudImageHeight)
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
 end

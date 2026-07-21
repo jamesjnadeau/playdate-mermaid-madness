@@ -187,6 +187,11 @@ Config.STORM_CLOUD_DAMAGE_INTERVAL = 2 -- seconds between damage ticks
 Config.STORM_CLOUD_RADIUS   = 20   -- px; damage-application radius, independent of the drawn image size below
 Config.STORM_CLOUD_WIDTH    = 80   -- px; drawn width of the cloud image (source/assets/images/storm-cloud.png)
 Config.STORM_CLOUD_HEIGHT   = 44   -- px; drawn height of the cloud image
+-- Coverage (0-1) of the runtime-dithered checkerboard StormCloud.lua bakes
+-- for the cloud's resting (non-flashing) look -- 0.5 is an even black/white
+-- checker reading as mid-gray; higher = darker, lower = lighter. See the
+-- "Resting-state gray" comment in StormCloud.lua.
+Config.STORM_CLOUD_GREY_ALPHA = 0.5
 
 -- Initial spawn (a fresh cloud backfilled by GameScene:updateStormClouds, not
 -- the teleport-back-into-range case below): lands at a random point
@@ -219,9 +224,9 @@ Config.STORM_CLOUD_TELEPORT_LAND_MAX = 300 -- px; farthest the teleport can land
 -- strike briefly flashes it to solid white, then solid black, then back to
 -- normal (see StormCloud:draw). STEP_DURATION is how long each of those two
 -- flash steps lasts; MIN/MAX_INTERVAL bound the random wait between strikes.
-Config.STORM_CLOUD_FLASH_MIN_INTERVAL = 2    -- seconds; shortest gap between flashes
-Config.STORM_CLOUD_FLASH_MAX_INTERVAL = 6    -- seconds; longest gap between flashes
-Config.STORM_CLOUD_FLASH_STEP_DURATION = 0.08 -- seconds each flash step (white, then black) lasts
+Config.STORM_CLOUD_FLASH_MIN_INTERVAL = 0.2    -- seconds; shortest gap between flashes
+Config.STORM_CLOUD_FLASH_MAX_INTERVAL = 0.8    -- seconds; longest gap between flashes
+Config.STORM_CLOUD_FLASH_STEP_DURATION = 0.25 -- seconds each flash step (white, then black) lasts
 
 -- Damage bolt: a jagged lightning line drawn from a cloud's center to each
 -- enemy it damages on a given tick (see GameScene:updateStormClouds/
