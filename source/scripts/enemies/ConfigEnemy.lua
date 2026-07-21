@@ -188,8 +188,8 @@ Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 8
 -- other enemies' hulls, since each segment's position is independent history
 -- rather than a rigid shape.
 Config.ENEMY_SEA_SERPENT_SEGMENT_COUNT = 6
-Config.ENEMY_SEA_SERPENT_SEGMENT_RADIUS = 7  -- px radius of each body ellipse
-Config.ENEMY_SEA_SERPENT_SEGMENT_SEPARATION = 12  -- px between consecutive segment centers along the path
+Config.ENEMY_SEA_SERPENT_SEGMENT_RADIUS = 12  -- px radius of each body ellipse
+Config.ENEMY_SEA_SERPENT_SEGMENT_SEPARATION = 36  -- px between consecutive segment centers along the path
 -- Surface/dive cycle timing (seconds) -- see EnemySeaSerpent:updateSurfaceCycle.
 Config.ENEMY_SEA_SERPENT_SURFACE_TIME = 4.0  -- fully visible
 Config.ENEMY_SEA_SERPENT_DIVE_TIME = 2.5  -- fully hidden

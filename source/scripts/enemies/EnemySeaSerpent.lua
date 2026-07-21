@@ -243,16 +243,28 @@ function EnemySeaSerpent:visiblePartCount()
 	end
 end
 
--- Static full-length reference pose for EnemySelectScene's preview pane
--- (Ship:buildBodyImage bakes this once via Ship:drawBodyLocal) -- the body
--- ellipses laid out in a straight line astern since there's no real travelled
--- path to draw from for a preview icon. The live, moving draw (:draw below)
--- reads self.trail instead and never calls buildBodyImage.
+-- EnemySelectScene's preview pane (see the module comment above and
+-- EnemySelectScene.lua:54) is a small fixed-size box, not the full game
+-- screen -- so the static reference pose below only draws the head plus this
+-- many trailing segments, not the full self.segmentCount. With a long body
+-- (large SEGMENT_COUNT/SEPARATION), Ship:bodyRadius/buildBodyImage would
+-- otherwise bake a huge, mostly-empty square image sized off the full tail
+-- length, leaving the head off in a corner of it instead of centered in the
+-- preview -- capping the pose keeps the baked image small and the head
+-- visibly in frame. Only affects this static preview: the live, moving
+-- :draw() below reads self.trail directly (all segmentCount of it) and never
+-- calls buildBodyImage.
+local PREVIEW_SEGMENT_COUNT = 1
+
+-- Static reference pose for EnemySelectScene's preview pane (Ship:buildBodyImage
+-- bakes this once via Ship:drawBodyLocal) -- the body ellipses laid out in a
+-- straight line astern since there's no real travelled path to draw from for
+-- a preview icon. Capped to PREVIEW_SEGMENT_COUNT segments -- see above.
 ---@param cx number
 ---@param cy number
 function EnemySeaSerpent:drawBodyLocal(cx, cy)
 	gfx.setColor(self.color)
-	for i = self.segmentCount, 1, -1 do
+	for i = math.min(PREVIEW_SEGMENT_COUNT, self.segmentCount), 1, -1 do
 		local sx = cx - self.segmentSeparation * i
 		gfx.fillEllipseInRect(sx - self.segmentRadius, cy - self.segmentRadius,
 			self.segmentRadius * 2, self.segmentRadius * 2)
@@ -262,11 +274,12 @@ function EnemySeaSerpent:drawBodyLocal(cx, cy)
 	gfx.fillTriangle(tipX, tipY, cx, cy - self.headWidth, cx, cy + self.headWidth)
 end
 
--- Bounding radius of the straight-line reference pose above -- see
+-- Bounding radius of the capped reference pose above -- see
 -- Ship:bodyRadius/buildBodyImage.
 ---@return number
 function EnemySeaSerpent:bodyRadius()
-	local tailReach = self.segmentCount * self.segmentSeparation + self.segmentRadius
+	local n = math.min(PREVIEW_SEGMENT_COUNT, self.segmentCount)
+	local tailReach = n * self.segmentSeparation + self.segmentRadius
 	return math.max(self.headLength, tailReach)
 end
 
