@@ -184,7 +184,7 @@ Config.STORM_CLOUD_COUNT    = 0    -- number of clouds currently owned; set by t
 Config.STORM_CLOUD_SPEED    = 20   -- px/s drift speed, whether tracking an enemy/player or wandering
 Config.STORM_CLOUD_DAMAGE   = .8    -- health removed from every enemy in range, per damage tick
 Config.STORM_CLOUD_DAMAGE_INTERVAL = 2 -- seconds between damage ticks
-Config.STORM_CLOUD_RADIUS   = 20   -- px; damage-application radius, independent of the drawn image size below
+Config.STORM_CLOUD_RADIUS   = 50   -- px; damage-application radius, independent of the drawn image size below
 Config.STORM_CLOUD_WIDTH    = 80   -- px; drawn width of the cloud image (source/assets/images/storm-cloud.png)
 Config.STORM_CLOUD_HEIGHT   = 44   -- px; drawn height of the cloud image
 -- Coverage (0-1) of the runtime-dithered checkerboard StormCloud.lua bakes
