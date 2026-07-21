@@ -147,7 +147,7 @@ Config.ENEMY_ROGUEWAVE_DAMAGE = Config.ENEMY_DAMAGE * 1.5  -- a charging wave hi
 Config.ENEMY_ROGUEWAVE_WIND_MULTIPLIER = Config.ENEMY_WIND_MULTIPLIER
 Config.ENEMY_ROGUEWAVE_COLOR         = gfx.kColorBlack
 Config.ENEMY_ROGUEWAVE_OUTLINE_COLOR = gfx.kColorWhite
-Config.ENEMY_ROGUEWAVE_MIN_LEVEL = 4  -- unlocked starting this level -- see Config.ENEMY_MIN_LEVEL
+Config.ENEMY_ROGUEWAVE_MIN_LEVEL = 7  -- unlocked starting this level -- see Config.ENEMY_MIN_LEVEL
 -- The crescent's bow-side tip reaches all the way to LENGTH, well past the
 -- RADIUS collision circle -- see Enemy.healthBarOffset -- so nudge the
 -- health bar out by the difference to clear it regardless of heading.

@@ -66,9 +66,6 @@ local scene = nil
 -- opts.maxVisible in MenuCard.build.
 local VISIBLE_ROWS = 9
 
--- Degrees of crank rotation that scrolls the list by one row.
-local CRANK_DEGREES_PER_ROW = 20
-
 -- Every adjustable Config.lua field, grouped to mirror Config.lua's own
 -- section comments -- see the file header above for what's deliberately
 -- left out and why. `label` is auto-derived from `key` (see titleCase
@@ -325,18 +322,18 @@ TuningScene.inputHandler = {
 	end,
 	-- Fast-scroll: the list is long enough (~90 rows) that Up/Down alone is
 	-- tedious, so the crank moves the selection one row per
-	-- CRANK_DEGREES_PER_ROW degrees turned, in either direction. crankAccum
-	-- carries leftover sub-threshold rotation between calls.
+	-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees turned, in either direction.
+	-- crankAccum carries leftover sub-threshold rotation between calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ROW do
+		while scene.crankAccum >= Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ROW
+			scene.crankAccum = scene.crankAccum - Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ROW do
+		while scene.crankAccum <= -Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ROW
+			scene.crankAccum = scene.crankAccum + Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

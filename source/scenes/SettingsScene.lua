@@ -41,10 +41,6 @@ SettingsScene = class("SettingsScene").extends(NobleScene) or SettingsScene
 
 local scene = nil
 
--- Degrees of crank rotation that moves the highlight by one row, same idea
--- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
-local CRANK_DEGREES_PER_ITEM = 20
-
 -- The song row cycles a virtual list: index 1 is always "no song", indices
 -- 2.. map to MusicPlayer.listSongs()[index - 1]. Config.MUSIC_SONG (nil or a
 -- song name) is the source of truth so the choice reads back correctly if
@@ -206,19 +202,19 @@ SettingsScene.inputHandler = {
 		if scene then Noble.transition(TitleScene) end
 	end,
 	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
-	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in either
-	-- direction. crankAccum carries leftover sub-threshold rotation between
-	-- calls.
+	-- highlight one item per Config.MENU_CRANK_DEGREES_PER_ITEM degrees
+	-- turned, in either direction. crankAccum carries leftover sub-threshold
+	-- rotation between calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum >= Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum - Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum <= -Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum + Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

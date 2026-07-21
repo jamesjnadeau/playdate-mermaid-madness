@@ -23,10 +23,6 @@ EnemySelectScene = class("EnemySelectScene").extends(NobleScene) or EnemySelectS
 
 local scene = nil
 
--- Degrees of crank rotation that moves the highlight by one item, same idea
--- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
-local CRANK_DEGREES_PER_ITEM = 20
-
 -- One inert instance per GameScene.enemyTypes entry, positioned off at the
 -- origin and never updated -- exists purely so the preview pane can read its
 -- real stats (Enemy:previewStats) and bake its real body image
@@ -144,19 +140,19 @@ EnemySelectScene.inputHandler = {
 		if scene then Noble.transition(GameSceneTraining) end
 	end,
 	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
-	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in
-	-- either direction. crankAccum carries leftover sub-threshold rotation
-	-- between calls.
+	-- highlight one item per Config.MENU_CRANK_DEGREES_PER_ITEM degrees
+	-- turned, in either direction. crankAccum carries leftover sub-threshold
+	-- rotation between calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum >= Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum - Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum <= -Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum + Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

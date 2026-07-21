@@ -47,10 +47,6 @@ UpgradeSelectScene = class("UpgradeSelectScene").extends(NobleScene) or UpgradeS
 
 local scene = nil
 
--- Degrees of crank rotation that moves the highlight by one item, same idea
--- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
-local CRANK_DEGREES_PER_ITEM = 20
-
 -- Draws `count` distinct entries from Config.UPGRADES without replacement
 -- (falls back to fewer if the pool is smaller than `count`). Entries with an
 -- `available` predicate (e.g. "Rapid Autolightning" requiring Autolightning
@@ -178,20 +174,20 @@ UpgradeSelectScene.inputHandler = {
 		scene:rebuild()
 	end,
 	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
-	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in
-	-- either direction (a no-op once phase == "confirm", same as
+	-- highlight one item per Config.MENU_CRANK_DEGREES_PER_ITEM degrees
+	-- turned, in either direction (a no-op once phase == "confirm", same as
 	-- moveSelection). crankAccum carries leftover sub-threshold rotation
 	-- between calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum >= Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum - Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum <= -Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum + Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

@@ -25,10 +25,6 @@ local scene = nil
 -- time the player backs out to it.
 local lightningPlayedThisSession = false
 
--- Degrees of crank rotation that moves the highlight by one item, same idea
--- (and same threshold) as TuningScene.lua's CRANK_DEGREES_PER_ROW.
-local CRANK_DEGREES_PER_ITEM = 20
-
 -- Gap between the menu card and the bottom/left screen edges.
 local TITLE_MENU_MARGIN = 12
 
@@ -159,19 +155,19 @@ TitleScene.inputHandler = {
 	AButtonDown = function() confirmSelection() end,
 	BButtonDown = function() confirmSelection() end,
 	-- Same fast-scroll idea as TuningScene.lua: the crank moves the
-	-- highlight one item per CRANK_DEGREES_PER_ITEM degrees turned, in
-	-- either direction. crankAccum carries leftover sub-threshold rotation
-	-- between calls.
+	-- highlight one item per Config.MENU_CRANK_DEGREES_PER_ITEM degrees
+	-- turned, in either direction. crankAccum carries leftover sub-threshold
+	-- rotation between calls.
 	cranked = function(change)
 		if not scene then return end
 		scene.crankAccum = scene.crankAccum + change
-		while scene.crankAccum >= CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum >= Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(1)
-			scene.crankAccum = scene.crankAccum - CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum - Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
-		while scene.crankAccum <= -CRANK_DEGREES_PER_ITEM do
+		while scene.crankAccum <= -Config.MENU_CRANK_DEGREES_PER_ITEM do
 			moveSelection(-1)
-			scene.crankAccum = scene.crankAccum + CRANK_DEGREES_PER_ITEM
+			scene.crankAccum = scene.crankAccum + Config.MENU_CRANK_DEGREES_PER_ITEM
 		end
 	end,
 }

@@ -448,6 +448,15 @@ Config.INSTRUCTIONS_TEXT_BOX_RADIUS       = 8   -- corner radius (px)
 Config.INSTRUCTIONS_TEXT_LINE_GAP         = 2   -- px gap between the prompt and progress/hint lines
 Config.INSTRUCTIONS_TEXT_BOX_MAX_WIDTH    = 220 -- px each line wraps at -- the out-of-range hint is long enough to need it
 
+-----------
+-- Menus --
+-----------
+-- Degrees of crank rotation that moves a menu's highlight by one
+-- item/row, shared by every crank-navigable menu (TitleScene, SettingsScene,
+-- EnemySelectScene, UpgradeSelectScene, UpgradeTestScene, TuningScene) so
+-- crank feel is consistent across the whole game.
+Config.MENU_CRANK_DEGREES_PER_ITEM = 20
+
 ----------
 -- Boot --
 ----------

@@ -321,7 +321,7 @@ the full rationale.
 
 - **Reached from:** `SettingsScene` (Tuning section, "Open Tuning Menu").
 - **Controls:** Up/Down move the highlight (wraps); the crank fast-scrolls
-  the list (one row per `CRANK_DEGREES_PER_ROW` degrees turned, either
+  the list (one row per `Config.MENU_CRANK_DEGREES_PER_ITEM` degrees turned, either
   direction); Left/Right adjust the highlighted numeric setting by its step,
   clamped to that field's configured min/max; A toggles the highlighted
   boolean setting (a no-op on a numeric row, and Left/Right are a no-op on a
