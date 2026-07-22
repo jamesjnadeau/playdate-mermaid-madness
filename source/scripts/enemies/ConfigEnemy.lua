@@ -124,13 +124,13 @@ Config.ENEMY_KRAKEN_HEALTH_BAR_OFFSET = (Config.ENEMY_KRAKEN_DOT_OFFSET + Config
 -- stop, turns in place to face the target for up to TURN_TIME seconds, then
 -- charges again -- it never turns while moving. CHARGE_SPEED/CHARGE_LENGTH/
 -- TURN_TIME are the three tunable knobs (speed, charge length, timing).
-Config.ENEMY_ROGUEWAVE_CHARGE_SPEED = math.floor(Config.ENEMY_SPEED * 2.0)  -- pixels / second while charging, much faster than a steady-homing enemy
-Config.ENEMY_ROGUEWAVE_ACCEL       = math.floor(Config.ENEMY_ACCEL * 2.5)  -- pixels / second^2 easing up to CHARGE_SPEED
-Config.ENEMY_ROGUEWAVE_STOP_ACCEL  = Config.ENEMY_ROGUEWAVE_ACCEL * 2      -- brakes harder than it winds up, so the stop reads as a deliberate dig-in
+Config.ENEMY_ROGUEWAVE_CHARGE_SPEED = math.floor(Config.ENEMY_SPEED * 3.5)  -- pixels / second while charging, much faster than a steady-homing enemy
+Config.ENEMY_ROGUEWAVE_ACCEL       = math.floor(Config.ENEMY_ACCEL * 3.5)  -- pixels / second^2 easing up to CHARGE_SPEED
+Config.ENEMY_ROGUEWAVE_STOP_ACCEL  = Config.ENEMY_ROGUEWAVE_ACCEL * 6      -- brakes harder than it winds up, so the stop reads as a deliberate dig-in
 Config.ENEMY_ROGUEWAVE_STOP_SPEED_THRESHOLD = 5  -- px/second below which "stopping" counts as fully stopped and turning can begin
-Config.ENEMY_ROGUEWAVE_CHARGE_LENGTH = 3.0  -- seconds spent charging before braking to a stop
-Config.ENEMY_ROGUEWAVE_TURN_TIME    = 1.2   -- seconds spent stopped-and-turning before charging again
-Config.ENEMY_ROGUEWAVE_TURN_RATE    = 190   -- degrees / second while stopped -- fast, since this is the only time it can turn at all
+Config.ENEMY_ROGUEWAVE_CHARGE_LENGTH = 4  -- seconds spent charging before braking to a stop
+Config.ENEMY_ROGUEWAVE_TURN_TIME    = 2   -- seconds spent stopped-and-turning before charging again
+Config.ENEMY_ROGUEWAVE_TURN_RATE    = 90   -- degrees / second while stopped -- fast, since this is the only time it can turn at all
 Config.ENEMY_ROGUEWAVE_LENGTH = 34  -- half-length of the outer ellipse, elongated compared to the base enemy's hull
 Config.ENEMY_ROGUEWAVE_BEAM   = 20  -- half-width of the outer ellipse, perpendicular to its direction of travel -- LENGTH runs along the bow-stern axis (see EnemyRogueWave:drawBodyLocal)
 -- The crescent look (see EnemyRogueWave:drawBodyLocal) comes from cutting a
