@@ -2,17 +2,17 @@
 -- Reached from the title screen's "Settings" item. A flat list of settings
 -- (HUD toggles -- Config.HUD_SHOW_*, moved here from the system menu so it
 -- stays free for scene-specific items, see EnemySelectScene/
--- GameSceneTraining's "Select Enemy"; Sound -- pick a background song out of
--- source/assets/songs and set Config.MUSIC_VOLUME, via MusicPlayer.selectSong
--- -- the same function main.lua's boot default and the system menu's
--- "Music" checkmark use, so all three stay in sync; and Tuning -- a single
--- row that hands off to TuningScene's full debug/tweak menu -- Tuning is no
--- longer reachable directly from the title screen, only through here).
+-- GameSceneTraining's "Select Enemy"; Sound -- a Music on/off toggle (also
+-- moved here from the system menu, same reason), pick a background song out
+-- of source/assets/songs, and set Config.MUSIC_VOLUME, all via MusicPlayer
+-- so this scene and main.lua's boot default stay in sync; and Tuning -- a
+-- single row that hands off to TuningScene's full debug/tweak menu -- Tuning
+-- is no longer reachable directly from the title screen, only through here).
 -- Rendered via MenuCard (source/scripts/utilities/MenuCard.lua), the same
 -- list+description card layout UpgradeTestScene/UpgradeSelectScene use --
 -- the description pane shows what the highlighted row does. Up/Down (or
 -- the crank) move the highlight (wraps); Left/Right cycle the song or adjust
--- the volume; Ⓐ toggles a HUD setting or opens Tuning; Ⓑ returns to the
+-- the volume; Ⓐ toggles a HUD/Music setting or opens Tuning; Ⓑ returns to the
 -- title screen.
 
 import "scripts/utilities/Config"
@@ -80,6 +80,7 @@ local ITEMS = {
 	{ type = "boolean", key = "HUD_SHOW_WIND_DIRECTION", label = "Wind Direction", description = "Show the current wind direction in the HUD." },
 	{ type = "boolean", key = "HUD_SHOW_PLAYER_SPEED", label = "Player Speed", description = "Show the ship's current speed in the HUD." },
 	{ type = "boolean", key = "HUD_SHOW_FPS", label = "FPS Counter", description = "Show a frames-per-second counter in the HUD." },
+	{ type = "boolean", key = "MUSIC_ENABLED", label = "Music", description = "Turn background music on or off." },
 	{ type = "song", label = "Song", description = "Choose the background music track (or none)." },
 	{ type = "number", key = "MUSIC_VOLUME", label = "Volume", step = 0.05, min = 0, max = 1, percent = true, description = "Adjust the background music volume." },
 	{ type = "action", label = "Open Tuning Menu", action = function() Noble.transition(TuningScene) end, description = "Open the full debug tuning menu." },
@@ -185,6 +186,13 @@ local function activate()
 			-- Noble's own update loop checks Noble.showFPS, not Config directly
 			-- (unlike the other HUD_SHOW_* fields) -- see Noble.lua's showFPS field.
 			Noble.showFPS = Config.HUD_SHOW_FPS
+		elseif item.key == "MUSIC_ENABLED" then
+			-- MusicPlayer.setEnabled starts/stops playback and keeps
+			-- Config.MUSIC_ENABLED in sync -- the same function main.lua's boot
+			-- default used to share with the system-menu "Music" checkmark,
+			-- now moved here instead (see the 3-item system-menu cap note in
+			-- CLAUDE.md).
+			MusicPlayer.setEnabled(Config.MUSIC_ENABLED)
 		end
 		scene:rebuild()
 	elseif item.type == "action" then

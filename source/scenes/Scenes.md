@@ -24,6 +24,9 @@ flowchart TD
     Settings -->|"B"| Title
     Settings -->|"Tuning section: Open Tuning Menu (A)"| Tuning["TuningScene"]
     Tuning -->|"B"| Settings
+    Tuning -->|"system menu: Load Defaults"| TuningDiff["TuningDiffScene"]
+    Tuning -->|"system menu: Load Custom"| TuningDiff
+    TuningDiff -->|"B"| Tuning
 
     GameTraining -->|"B"| Title
     GameTraining -->|"system menu: Select Enemy"| EnemySelect["EnemySelectScene"]
@@ -145,9 +148,10 @@ and enemies defeated, then returns to `TitleScene`. Only reachable in a
 
 A sandbox for testing ship/wind/combat feel: no automatic spawning or level
 progression. Adds "Select Enemy" and "Test Upgrade" items to the system menu
-while active — the full 3-item cap alongside `main.lua`'s "Music" checkmark,
-no headroom left for a fourth (see the 3-item system-menu cap note in the
-repo's `CLAUDE.md` before adding another system-menu item anywhere).
+while active (see the 3-item system-menu cap note in the repo's `CLAUDE.md`
+before adding another system-menu item anywhere — `TuningScene` below is the
+only other scene that uses up the cap, though never at the same time as this
+one).
 
 - **Reached from:** `TitleScene` ("Training"), `EnemySelectScene` (after
   confirming or cancelling a pick), `UpgradeTestScene` (after applying or
@@ -255,7 +259,7 @@ actually performs *that* direction enough — see `Config.INSTRUCTIONS_*`:
 
 ## SettingsScene
 
-A flat (scrollless — it's short) list of 7 rows, curated for players rather
+A flat (scrollless — it's short) list of 8 rows, curated for players rather
 than covering all of `Config.lua` like `TuningScene` does:
 
 - **HUD toggles** — the `Config.HUD_SHOW_*` flags (Wind Speed / Wind
@@ -263,6 +267,10 @@ than covering all of `Config.lua` like `TuningScene` does:
   menu) so the system menu stays free for scene-specific items like
   `GameSceneTraining`'s "Select Enemy"; see the 3-item cap note in
   `CLAUDE.md`.
+- **Music** — `Config.MUSIC_ENABLED`, toggled via `MusicPlayer.setEnabled`
+  (starts/stops playback immediately). Also moved here out of the system
+  menu, for the same reason as the HUD toggles — this used to be the system
+  menu's "Music" checkmark.
 - **Song** — cycles through song subdirectories (each a set of
   pre-rendered ADPCM `.wav` pieces, see `tools/render-song.sh`) found under
   `source/assets/songs` (scanned once via `playdate.file.listFiles`) via
@@ -283,8 +291,8 @@ the highlighted row's purpose shows in the description pane on the right.
 - **Reached from:** `TitleScene` ("Settings"); `TuningScene` (B).
 - **Controls:** Up/Down (or the crank) move the highlight (wraps); Left/Right
   cycle the Song row or adjust the Volume row (a no-op on other rows); A
-  toggles the highlighted HUD setting or activates the Tuning row (a no-op on
-  Sound rows); B returns to `TitleScene`.
+  toggles the highlighted HUD/Music setting or activates the Tuning row (a
+  no-op on Song/Volume rows); B returns to `TitleScene`.
 - **sceneProperties read:** none.
 
 ## TuningScene
@@ -292,11 +300,28 @@ the highlighted row's purpose shows in the description pane on the right.
 A broad debug/tweak surface, not a curated player-facing settings screen
 like `SettingsScene`'s rows: a single scrollable, categorized menu covering
 nearly every remaining `Config.lua` tuning value (~90 fields, grouped to
-mirror `Config.lua`'s own section comments). Changes are runtime-only —
-they mutate the global `Config` table in place, the same way
-`SettingsScene`'s `HUD_SHOW_*` toggles already do, and nothing here ever
-touches `playdate.datastore`, so nothing persists past the current play
-session.
+mirror `Config.lua`'s own section comments — the table itself now lives in
+`source/scripts/utilities/ConfigTuning.lua`, not this file). Changes are
+runtime-only by default — they mutate the global `Config` table in place,
+the same way `SettingsScene`'s `HUD_SHOW_*` toggles already do — but this
+scene also adds three items to the system menu while active (see the 3-item
+cap note in `CLAUDE.md`; `GameSceneTraining` is the only other scene that
+uses the cap, never at the same time as this one) that persist/restore a
+whole snapshot of those ~90 fields via `playdate.datastore`
+(`ConfigTuning.saveCustom`/`loadCustom`/`loadDefaults`):
+
+- **Load Defaults** — resets every field back to its fresh-load value, then
+  shows `TuningDiffScene` (see below).
+- **Load Custom** — restores the single saved custom slot, if any, then
+  shows `TuningDiffScene` either way (with a "no save found" message if
+  there wasn't one).
+- **Save Custom** — writes the current value of every field to that slot,
+  overwriting whatever was saved before. Stays on `TuningScene`.
+
+The custom slot persists in `playdate.datastore` across app relaunches (not
+just scene transitions), so a player can dial in values, Save Custom, quit
+to `TitleScene` (or exit the game entirely), and Load Custom later to get
+them back.
 
 Rendered via `MenuCard` (`source/scripts/utilities/MenuCard.lua`), the same
 list+description card layout `UpgradeTestScene`/`UpgradeSelectScene`/
@@ -315,9 +340,9 @@ way: `Config.EXPLOSION` (a structured pdParticles table, not a scalar —
 `EXPLOSION_WIND_INFLUENCE` next to it is still included), the display
 fundamentals `SCREEN_W`/`SCREEN_H`/`REFRESH`/`DT`, the boot-only string
 `START_SCENE`, the build-time switch `DEMO_MODE`/`DEMO_MAX_LEVEL`, and
-`Config.MUSIC_VOLUME`/`MUSIC_SONG` (covered by `SettingsScene`'s own Sound
-section instead). See the comment block at the top of `TuningScene.lua` for
-the full rationale.
+`Config.MUSIC_VOLUME`/`MUSIC_SONG`/`MUSIC_ENABLED` (covered by
+`SettingsScene`'s own Sound section instead). See the comment block at the
+top of `ConfigTuning.lua` for the full rationale.
 
 - **Reached from:** `SettingsScene` (Tuning section, "Open Tuning Menu").
 - **Controls:** Up/Down move the highlight (wraps); the crank fast-scrolls
@@ -327,6 +352,30 @@ the full rationale.
   boolean setting (a no-op on a numeric row, and Left/Right are a no-op on a
   boolean row); B returns to `SettingsScene`.
 - **sceneProperties read:** none.
+
+## TuningDiffScene
+
+Reached only from `TuningScene`'s system menu, after "Load Defaults" or
+"Load Custom" — lists every `ConfigTuning.ITEMS` field whose value no longer
+matches its fresh-load default (`ConfigTuning.diffFromDefaults`), showing
+both the default and the now-current value, so a player can see exactly what
+a load changed. Read-only: no editing happens here, only scrolling and going
+back. If nothing differs (e.g. right after "Load Defaults", or "Load Custom"
+when the saved slot happened to match the defaults), shows a single "No
+Differences" row instead of an empty list; "Load Custom" with no saved slot
+at all shows a "no custom save found" message in that same spot.
+
+Rendered via `MenuCard`, the same list+description card layout
+`TuningScene`/`SettingsScene`/`UpgradeTestScene`/`UpgradeSelectScene` use,
+with `opts.maxVisible` windowing like `TuningScene` (a big load could still
+list most of `ConfigTuning.ITEMS`).
+
+- **Reached from:** `TuningScene` (system menu "Load Defaults"/"Load
+  Custom").
+- **Controls:** Up/Down (or the crank) move the highlight (wraps); B returns
+  to `TuningScene`.
+- **sceneProperties read:** `message` (optional, shown only when the diff
+  list is empty — see "Load Custom" above).
 
 ## LevelCompleteScene
 

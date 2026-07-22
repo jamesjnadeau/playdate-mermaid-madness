@@ -73,6 +73,30 @@ playdate.file = playdate.file or {}
 -- .pdx bundle under lua5.4, so this always reports an empty directory.
 function playdate.file.listFiles(path) return {} end
 
+-- playdate.datastore ------------------------------------------------------
+
+-- Stands in for the real on-device JSON-backed store (Data/<bundleid>/
+-- <filename>.json) with a plain in-memory table, keyed by filename -- good
+-- enough for ConfigTuning.lua's save/load round-trip under lua5.4, which
+-- never runs across a real process relaunch anyway. Test helper __reset,
+-- not part of the real API, clears it between tests (see
+-- TestSceneFlow:setUp in test_scene_flow.lua).
+playdate.datastore = playdate.datastore or {}
+local datastoreFiles = {}
+function playdate.datastore.write(data, filename, __minifyTable)
+	filename = filename or "data"
+	local copy = {}
+	for k, v in pairs(data) do copy[k] = v end
+	datastoreFiles[filename] = copy
+end
+function playdate.datastore.read(filename)
+	filename = filename or "data"
+	return datastoreFiles[filename]
+end
+function playdate.datastore.__reset()
+	datastoreFiles = {}
+end
+
 -- playdate.sound ----------------------------------------------------------------
 
 -- Just enough for MusicPlayer.lua's module-level `player` field (a

@@ -128,17 +128,25 @@ History: this was first hit 2026-07-18 adding a "Select Enemy" system-menu
 item to `GameSceneTraining.lua` alongside 3 always-on HUD-toggle checkmark items
 from `main.lua` — the 4th item never appeared. It was fixed by moving the HUD
 toggles (Wind Speed/Direction/Player Speed) out of the system menu entirely
-into `SettingsScene.lua` (reached from `TitleScene`'s "Settings" item). As of
-now three items are live, the full cap: `main.lua`'s "Music" checkmark
-(always on, added once at boot, synced with `Config.MUSIC_ENABLED` via
-`MusicPlayer.setEnabled` — see `SettingsScene.lua`'s Sound section for the
-player-facing equivalent), and `GameSceneTraining`'s two scene-scoped items,
-"Select Enemy" and "Test Upgrade" (both added in `:start()`, each removed via
-its own `removeMenuItem` — not `removeAllMenuItems`, which would also wipe
-out "Music" — in `:finish()`; see `EnemySelectScene.lua`/`UpgradeTestScene.lua`).
-That's 3 of 3 — no headroom left. Adding a fourth anywhere requires first
-either removing one of these three or moving it to an in-scene playout menu
-instead (see the pattern note above).
+into `SettingsScene.lua` (reached from `TitleScene`'s "Settings" item). At
+that point three items were live, the full cap: `main.lua`'s "Music"
+checkmark plus `GameSceneTraining`'s two scene-scoped items, "Select Enemy"
+and "Test Upgrade".
+
+The "Music" checkmark was later removed from the system menu too (moved into
+`SettingsScene.lua`'s Sound section as a plain toggle, synced with
+`Config.MUSIC_ENABLED` via `MusicPlayer.setEnabled`), freeing the cap back up
+— not because the cap was hit again, but to make room for
+`TuningScene.lua`'s three scene-scoped items ("Load Defaults"/"Load
+Custom"/"Save Custom", added in `:start()`/removed in `:finish()`, same
+pattern as `GameSceneTraining`'s). So as of now there are two scenes that
+each use the full 3-item cap on their own — `GameSceneTraining` ("Select
+Enemy"/"Test Upgrade", 2 of 3) and `TuningScene` (all 3) — but never at the
+same time as each other, since only one scene is ever active. Adding an
+always-on item (like the old "Music" checkmark) back in `main.lua` would
+collide with whichever scene-scoped set is live; adding a fourth scene-scoped
+item to either scene requires first removing one of its existing three or
+moving it to an in-scene playout menu instead (see the pattern note above).
 
 ## Rendered songs are one file each, looped natively
 

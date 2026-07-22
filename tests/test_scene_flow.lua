@@ -33,6 +33,7 @@ function TestSceneFlow:setUp()
 		self.configSnapshot[k] = v
 	end
 	GameSceneTraining.selectedEnemyType = nil -- class-level field; survives scene transitions by design
+	playdate.datastore.__reset() -- clears ConfigTuning's custom-slot save between tests
 	Noble.transition(TitleScene)
 end
 
@@ -278,26 +279,27 @@ function TestSceneFlow:testTitleSettingsFpsCounterTogglesNobleShowFPS()
 	lu.assertEquals(Noble.showFPS, before)
 end
 
--- ITEMS[5] is the Song row, [6] is Volume -- see SettingsScene.lua's ITEMS
--- table. mock_noble.lua's playdate.file.listFiles always returns an empty
--- list (no real .pdx bundle under lua5.4), so the Song row has nothing to
--- cycle through; this only exercises that it's a safe no-op.
+-- ITEMS[5] is the Music toggle, [6] is Song, [7] is Volume -- see
+-- SettingsScene.lua's ITEMS table. mock_noble.lua's playdate.file.listFiles
+-- always returns an empty list (no real .pdx bundle under lua5.4), so the
+-- Song row has nothing to cycle through; this only exercises that it's a
+-- safe no-op.
 function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
 
-	for _ = 1, 4 do
-		Noble.Input.fire("downButtonDown") -- HUD(4) -> Song
+	for _ = 1, 5 do
+		Noble.Input.fire("downButtonDown") -- HUD(4) + Music -> Song
 	end
-	lu.assertEquals(Noble.currentScene().selected, 5)
+	lu.assertEquals(Noble.currentScene().selected, 6)
 
 	Noble.Input.fire("rightButtonDown") -- no songs bundled: no-op
 	lu.assertNil(Config.MUSIC_SONG)
 	lu.assertFalse(MusicPlayer.playing)
 
 	Noble.Input.fire("downButtonDown") -- Song -> Volume
-	lu.assertEquals(Noble.currentScene().selected, 6)
+	lu.assertEquals(Noble.currentScene().selected, 7)
 
 	local before = Config.MUSIC_VOLUME
 	Noble.Input.fire("rightButtonDown")
@@ -317,19 +319,41 @@ function TestSceneFlow:testTitleSettingsSoundSectionVolumeAndEmptySongList()
 end
 
 -- Tuning is no longer reachable directly from the title screen -- it's the
--- last row of SettingsScene's ITEMS table: 4 HUD rows + Song + Volume
--- precede "Open Tuning Menu", so 6 downButtonDowns from Settings' default
--- selection=1 lands on it. TuningScene.selected then starts on its own
--- ITEMS[1], which is always Config.WATER_GRID (CATEGORIES[1] = "Water", its
--- first item) -- see TuningScene.lua.
+-- last row of SettingsScene's ITEMS table: 4 HUD rows + Music + Song +
+-- Volume precede "Open Tuning Menu", so 7 downButtonDowns from Settings'
+-- default selection=1 lands on it. TuningScene.selected then starts on its
+-- own ITEMS[1], which is always Config.WATER_GRID (CATEGORIES[1] = "Water",
+-- its first item) -- see TuningScene.lua.
 local function enterTuningFromTitle()
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
-	for _ = 1, 6 do
-		Noble.Input.fire("downButtonDown") -- HUD(4) + Song + Volume -> "Open Tuning Menu"
+	for _ = 1, 7 do
+		Noble.Input.fire("downButtonDown") -- HUD(4) + Music + Song + Volume -> "Open Tuning Menu"
 	end
 	Noble.Input.fire("AButtonDown")
+end
+
+-- Unlike the other HUD_SHOW_* rows, toggling "Music" (ITEMS[5]) also has to
+-- start/stop playback via MusicPlayer.setEnabled -- see SettingsScene.lua's
+-- activate().
+function TestSceneFlow:testTitleSettingsMusicToggleStartsAndStopsPlayback()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
+	Noble.Input.fire("AButtonDown")
+
+	for _ = 1, 4 do
+		Noble.Input.fire("downButtonDown") -- Wind Speed -> ... -> FPS Counter -> Music
+	end
+	lu.assertEquals(Noble.currentScene().selected, 5)
+
+	lu.assertTrue(Config.MUSIC_ENABLED) -- Config.lua's default
+	Noble.Input.fire("AButtonDown") -- turn off
+	lu.assertFalse(Config.MUSIC_ENABLED)
+	lu.assertFalse(MusicPlayer.playing) -- no songs bundled under lua5.4, but setEnabled(false) always stops
+
+	Noble.Input.fire("AButtonDown") -- turn back on
+	lu.assertTrue(Config.MUSIC_ENABLED)
 end
 
 function TestSceneFlow:testTitleTuningAdjustNumberThenBack()
@@ -395,6 +419,93 @@ function TestSceneFlow:testTitleTuningCrankScrollAndToggleBoolean()
 
 	Noble.Input.fire("BButtonDown")
 	lu.assertEquals(currentClassName(), "SettingsScene")
+end
+
+-- TuningScene adds "Load Defaults"/"Load Custom"/"Save Custom" to the system
+-- menu in :start() and removes them in :finish() -- same lifecycle pattern
+-- as GameSceneTraining's "Select Enemy"/"Test Upgrade" (see ConfigTuning.lua
+-- and TuningScene.lua's file header for what each one does).
+function TestSceneFlow:testTuningSystemMenuHasLoadSaveItems()
+	enterTuningFromTitle()
+	local menuItems = playdate.getSystemMenu():getMenuItems()
+	lu.assertEquals(#menuItems, 3)
+	lu.assertEquals(menuItems[1].name, "Load Defaults")
+	lu.assertEquals(menuItems[2].name, "Load Custom")
+	lu.assertEquals(menuItems[3].name, "Save Custom")
+
+	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "SettingsScene")
+	lu.assertEquals(#playdate.getSystemMenu():getMenuItems(), 0) -- TuningScene:finish() cleared it
+end
+
+-- "Load Defaults" resets every ConfigTuning.ITEMS field back to its
+-- fresh-load value, then shows TuningDiffScene -- with nothing left to
+-- differ from the defaults, that screen should list zero diffs.
+function TestSceneFlow:testTuningLoadDefaultsResetsChangedFieldAndShowsEmptyDiff()
+	local defaultWaterGrid = Config.WATER_GRID -- ITEMS[1], see CATEGORIES' "Water" section
+	enterTuningFromTitle()
+	Noble.Input.fire("rightButtonDown")
+	lu.assertEquals(Config.WATER_GRID, defaultWaterGrid + 5) -- WATER_GRID's step
+
+	playdate.getSystemMenu():getMenuItems()[1].callback() -- "Load Defaults"
+	lu.assertEquals(Config.WATER_GRID, defaultWaterGrid)
+	lu.assertEquals(currentClassName(), "TuningDiffScene")
+	lu.assertEquals(#Noble.currentScene().diffs, 0)
+
+	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "TuningScene")
+end
+
+-- "Load Custom" with nothing ever saved can't restore anything -- it still
+-- shows TuningDiffScene (consistent behavior either way), with a message
+-- explaining there was no save to load instead of a plain empty list.
+function TestSceneFlow:testTuningLoadCustomWithNoSavedSlotShowsMessage()
+	enterTuningFromTitle()
+	playdate.getSystemMenu():getMenuItems()[2].callback() -- "Load Custom"
+
+	lu.assertEquals(currentClassName(), "TuningDiffScene")
+	local diffScene = Noble.currentScene()
+	lu.assertEquals(#diffScene.diffs, 0)
+	lu.assertEquals(diffScene.message, "No custom save found -- nothing changed.")
+end
+
+-- Full round trip: tune a value, Save Custom, Load Defaults (back to
+-- baseline), then Load Custom restores the saved value -- and this time
+-- TuningDiffScene has something real to list. Also exercises the diff
+-- screen's Up/Down wrap and its own Ⓑ back to TuningScene.
+function TestSceneFlow:testTuningSaveCustomThenLoadDefaultsThenLoadCustomRoundTrips()
+	local defaultWaterGrid = Config.WATER_GRID -- ITEMS[1]
+	enterTuningFromTitle()
+	Noble.Input.fire("rightButtonDown")
+	local tunedWaterGrid = Config.WATER_GRID
+	Noble.Input.fire("downButtonDown") -- ITEMS[2], WATER_WAVELET_LENGTH_MIN
+	Noble.Input.fire("rightButtonDown")
+	local tunedWaveletLengthMin = Config.WATER_WAVELET_LENGTH_MIN
+
+	playdate.getSystemMenu():getMenuItems()[3].callback() -- "Save Custom" -- stays on TuningScene
+	lu.assertEquals(currentClassName(), "TuningScene")
+
+	playdate.getSystemMenu():getMenuItems()[1].callback() -- "Load Defaults"
+	lu.assertEquals(Config.WATER_GRID, defaultWaterGrid)
+	lu.assertEquals(#Noble.currentScene().diffs, 0)
+	Noble.Input.fire("BButtonDown") -- back to TuningScene
+
+	playdate.getSystemMenu():getMenuItems()[2].callback() -- "Load Custom"
+	lu.assertEquals(Config.WATER_GRID, tunedWaterGrid)
+	lu.assertEquals(Config.WATER_WAVELET_LENGTH_MIN, tunedWaveletLengthMin)
+
+	local diffScene = Noble.currentScene()
+	lu.assertEquals(currentClassName(), "TuningDiffScene")
+	lu.assertEquals(#diffScene.diffs, 2)
+	lu.assertEquals(diffScene.selected, 1)
+
+	Noble.Input.fire("downButtonDown")
+	lu.assertEquals(diffScene.selected, 2)
+	Noble.Input.fire("downButtonDown") -- wraps
+	lu.assertEquals(diffScene.selected, 1)
+
+	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "TuningScene")
 end
 
 -- --- GameSceneTraining / EnemySelectScene ------------------------------------

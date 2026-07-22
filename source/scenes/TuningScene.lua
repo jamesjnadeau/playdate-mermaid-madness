@@ -4,9 +4,27 @@
 -- menu -- unlike SettingsScene's curated rows, this is meant as a broad
 -- debug/tweak surface, not a player-facing settings screen; that's also why
 -- it's not reachable directly from the title screen. Changes are
--- runtime-only: they mutate the global Config table exactly like
--- SettingsScene's HUD_SHOW_* toggles already do, and nothing here ever
--- touches playdate.datastore, so nothing persists past this play session.
+-- runtime-only by default -- they mutate the global Config table exactly
+-- like SettingsScene's HUD_SHOW_* toggles already do -- but this scene's
+-- system-menu items (see below) can persist/restore a whole snapshot of
+-- them via playdate.datastore, through ConfigTuning
+-- (source/scripts/utilities/ConfigTuning.lua), which owns the actual
+-- ITEMS/CATEGORIES table, the fresh-load default snapshot, and the
+-- save/load/diff logic.
+--
+-- While this scene is active it adds three items to the system menu (see
+-- the 3-item cap note in CLAUDE.md -- these three are added in :start() and
+-- removed in :finish(), so they only ever compete for the cap with whatever
+-- else is active at the same time, never with GameSceneTraining's own two):
+--  - "Load Defaults" resets every field below back to its fresh-load value
+--    (ConfigTuning.loadDefaults), then shows TuningDiffScene.
+--  - "Load Custom" restores the single saved custom slot, if any
+--    (ConfigTuning.loadCustom), then shows TuningDiffScene either way.
+--  - "Save Custom" writes the current values of every field below to that
+--    slot (ConfigTuning.saveCustom), overwriting whatever was saved before.
+-- The custom slot persists in playdate.datastore across app relaunches (not
+-- just scene transitions), so a player can dial in values, Save Custom, quit
+-- to Title (or exit the game entirely), and Load Custom to get them back.
 --
 -- Rendered via MenuCard (source/scripts/utilities/MenuCard.lua), the same
 -- list+description card layout UpgradeTestScene/UpgradeSelectScene/
@@ -20,178 +38,42 @@
 -- Left/Right adjust the highlighted numeric setting; Ⓐ toggles the
 -- highlighted boolean setting; Ⓑ returns to SettingsScene.
 --
--- Deliberately leaves out:
---  - every Config.ENEMY_*/ConfigEnemy.lua field.
---  - Config.EXPLOSION (a structured table of pdParticles setters, not a
---    single scalar value -- EXPLOSION_WIND_INFLUENCE, the one plain-number
---    knob next to it, is still exposed below).
---  - Config.SCREEN_W/SCREEN_H/REFRESH/DT (display fundamentals baked in via
---    playdate.display.setRefreshRate at boot in main.lua; changing them here
---    wouldn't reconfigure the display or fixed timestep mid-run).
---  - Config.START_SCENE (a string naming a scene class, and boot-time only).
---  - Config.DEMO_MODE/DEMO_MAX_LEVEL (explicitly documented in Config.lua as
---    a build-time switch for a kiosk .pdx, not a runtime setting).
---  - Config.MUSIC_VOLUME/MUSIC_SONG (covered by SettingsScene's own Sound
---    section instead; MUSIC_SONG is a filename string besides, which this
---    scene's number/boolean row types don't support).
---  - Config.HUD_SHOW_FPS (covered by SettingsScene's HUD section instead --
---    toggling it needs a side effect, syncing Noble.showFPS, that this
---    scene's generic toggleBoolean doesn't perform).
+-- See ConfigTuning.lua for what's deliberately left out of ITEMS/CATEGORIES
+-- (every Config.ENEMY_*/ConfigEnemy.lua field, Config.EXPLOSION, the display
+-- fundamentals, Config.START_SCENE/DEMO_MODE/DEMO_MAX_LEVEL,
+-- Config.MUSIC_VOLUME/MUSIC_SONG/MUSIC_ENABLED, and Config.HUD_SHOW_FPS --
+-- all covered by SettingsScene instead).
 
 import "scripts/utilities/Config"
+import "scripts/utilities/ConfigTuning"
 import "scripts/utilities/Utils"
 import "scripts/utilities/MenuCard"
 
 local gfx <const> = playdate.graphics
 
----@class TuningScene.Item
----@field key string Config field this row edits
----@field label string display label, auto-derived from key unless overridden
----@field type "number"|"boolean"
----@field step? number amount Left/Right adjusts a number row by
----@field min? number
----@field max? number
----@field decimals? integer digits shown/rounded to for a number row
----@field headerBefore? string category name, set on the first item of each CATEGORIES entry -- see the flatten loop below
-
 ---@class TuningScene : NobleScene
----@field selected integer index into ITEMS
+---@field selected integer index into ConfigTuning.ITEMS
 ---@field crankAccum number leftover crank degrees not yet converted into a row move, see the cranked handler
 ---@field layout MenuCard.Layout see rebuild()
 TuningScene = class("TuningScene").extends(NobleScene) or TuningScene
 
 local scene = nil
 
+-- System-menu items added in :start(), removed in :finish() -- see the file
+-- header comment above.
+local loadDefaultsMenuItem = nil
+local loadCustomMenuItem = nil
+local saveCustomMenuItem = nil
+
 -- How many display rows (headers + items) MenuCard lays out at once -- see
 -- opts.maxVisible in MenuCard.build.
 local VISIBLE_ROWS = 9
 
--- Every adjustable Config.lua field, grouped to mirror Config.lua's own
--- section comments -- see the file header above for what's deliberately
--- left out and why. `label` is auto-derived from `key` (see titleCase
--- below) unless given explicitly, which HUD_SHOW_* uses since "Hud Show
--- Wind Speed" reads worse than a hand-picked label.
-local CATEGORIES = {
-	{ name = "Water", items = {
-		{ key = "WATER_GRID", step = 5, min = 10, max = 300 },
-		{ key = "WATER_WAVELET_LENGTH_MIN", step = 1, min = 1, max = 200 },
-		{ key = "WATER_WAVELET_LENGTH_MAX", step = 1, min = 1, max = 300 },
-		{ key = "WATER_WAVELET_WIDTH", step = 1, min = 1, max = 10 },
-		{ key = "WATER_WAVELET_SEGMENTS_PER_ZIGZAG_MIN", step = 1, min = 1, max = 20 },
-		{ key = "WATER_WAVELET_SEGMENTS_PER_ZIGZAG_MAX", step = 1, min = 1, max = 30 },
-		{ key = "WATER_WAVELET_AMPLITUDE", step = 1, min = 0, max = 50 },
-		{ key = "WATER_WAVELET_ZIGZAGS_MIN", step = 1, min = 1, max = 10 },
-		{ key = "WATER_WAVELET_ZIGZAGS_MAX", step = 1, min = 1, max = 15 },
-		{ key = "WATER_WAVELET_SPAWN_CHANCE", step = 0.05, min = 0, max = 1, decimals = 2 },
-	} },
-	{ name = "Wind", items = {
-		{ key = "WIND_SPEED_MIN", step = 5, min = 0, max = 300 },
-		{ key = "WIND_SPEED_MAX", step = 5, min = 0, max = 400 },
-		{ key = "WIND_SPEED_CHANGE_RATE_MIN", step = 0.5, min = 0, max = 20, decimals = 1 },
-		{ key = "WIND_SPEED_CHANGE_RATE_MAX", step = 0.5, min = 0, max = 20, decimals = 1 },
-		{ key = "WIND_CHANGE_INTERVAL_MIN", step = 1, min = 1, max = 60 },
-		{ key = "WIND_CHANGE_INTERVAL_MAX", step = 1, min = 1, max = 60 },
-		{ key = "WIND_DIRECTION_CHANGE_MIN", step = 5, min = 0, max = 180 },
-		{ key = "WIND_DIRECTION_CHANGE_MAX", step = 5, min = 0, max = 180 },
-		{ key = "WIND_DIRECTION_CHANGE_RATE_MIN", step = 0.5, min = 0, max = 30, decimals = 1 },
-		{ key = "WIND_DIRECTION_CHANGE_RATE_MAX", step = 0.5, min = 0, max = 30, decimals = 1 },
-		{ key = "WIND_INDICATOR_CIRCLE_SIZE", step = 1, min = 1, max = 80 },
-		{ key = "WIND_INDICATOR_SIZE", step = 1, min = 1, max = 80 },
-		{ key = "WAKE_WIND_INFLUENCE", step = 0.05, min = 0, max = 1, decimals = 2 },
-	} },
-	{ name = "Explosions", items = {
-		{ key = "EXPLOSION_WIND_INFLUENCE", step = 0.05, min = 0, max = 1, decimals = 2 },
-	} },
-	{ name = "Ship", items = {
-		{ key = "SHIP_MAX_SPEED", step = 5, min = 10, max = 400 },
-		{ key = "SHIP_DEFAULT_SPEED", step = 1, min = 0, max = 200 },
-		{ key = "SHIP_ACCEL", step = 5, min = 0, max = 400 },
-		{ key = "SHIP_TURN_SCALE", step = 0.05, min = 0.05, max = 3, decimals = 2 },
-		{ key = "SHIP_MAX_HEALTH", step = 1, min = 1, max = 20 },
-		{ key = "SHIP_LENGTH", step = 1, min = 5, max = 60 },
-		{ key = "SHIP_COLLIDE_RADIUS", step = 1, min = 4, max = 80 },
-		{ key = "SHIP_BEAM", step = 1, min = 2, max = 40 },
-		{ key = "SHIP_WIND_POWER_MULTIPLIER", step = 0.1, min = 0, max = 5, decimals = 2 },
-		{ key = "SHIP_WATER_FRICTION", step = 0.01, min = 0, max = 1, decimals = 3 },
-		{ key = "SHIP_OVERSPEED_FRICTION", step = 0.01, min = 0, max = 1, decimals = 3 },
-	} },
-	{ name = "Sail", items = {
-		{ key = "SAIL_TRIM_START", step = 0.05, min = 0, max = 1, decimals = 2 },
-		{ key = "SAIL_TRIM_RATE", step = 0.1, min = 0.1, max = 10, decimals = 2 },
-		{ key = "SAIL_MAX_ANGLE", step = 5, min = 10, max = 180 },
-		{ key = "SAIL_LENGTH", step = 1, min = 5, max = 80 },
-		{ key = "SAIL_SWING_SPEED", step = 5, min = 1, max = 500 },
-		{ key = "SAIL_SWING_FRICTION", step = 0.5, min = 0, max = 50, decimals = 1 },
-	} },
-	{ name = "Trident", items = {
-		{ key = "TRIDENT_CHARGE_RATE", step = 0.05, min = 0.05, max = 5, decimals = 2 },
-		{ key = "TRIDENT_DAMAGE", step = 1, min = 1, max = 20 },
-		{ key = "TRIDENT_SPEED", step = 10, min = 50, max = 1000 },
-		{ key = "TRIDENT_MAX_SPREAD", step = 1, min = 0, max = 90 },
-		{ key = "TRIDENT_MAX_ACCURACY", step = 0.01, min = 0, max = 1, decimals = 2 },
-		{ key = "TRIDENT_LIFETIME", step = 0.1, min = 0.1, max = 10, decimals = 2 },
-		{ key = "TRIDENT_RADIUS", step = 1, min = 1, max = 20 },
-		{ key = "TRIDENT_SHAFT_LENGTH", step = 1, min = 1, max = 40 },
-		{ key = "TRIDENT_PRONG_LENGTH", step = 1, min = 1, max = 40 },
-		{ key = "TRIDENT_PRONG_SPREAD", step = 1, min = 1, max = 40 },
-		{ key = "TRIDENT_LINE_WIDTH", step = 1, min = 1, max = 10 },
-		{ key = "TARGET_RANGE", step = 10, min = 20, max = 800 },
-		{ key = "AIM_LINE_LENGTH", step = 1, min = 1, max = 60 },
-		{ key = "AIM_LINE_WIDTH", step = 1, min = 1, max = 10 },
-		{ key = "NO_TARGET_MARK_SIZE", step = 1, min = 1, max = 60 },
-		{ key = "NO_TARGET_MARK_OFFSET", step = 1, min = 1, max = 100 },
-	} },
-	{ name = "HUD", items = {
-		{ key = "OFFSCREEN_INDICATOR_MARGIN", step = 5, min = 0, max = 200 },
-		{ key = "OFFSCREEN_INDICATOR_SIZE", step = 1, min = 4, max = 60 },
-		{ key = "OFFSCREEN_INDICATOR_GROUP_ANGLE", step = 1, min = 1, max = 90 },
-		{ key = "OFFSCREEN_INDICATOR_COUNT_SIZE", step = 1, min = 4, max = 60 },
-		{ key = "OFFSCREEN_INDICATOR_FLASH_PERIOD", step = 0.05, min = 0.05, max = 5, decimals = 2 },
-		{ key = "HUD_SHOW_WIND_SPEED", type = "boolean", label = "HUD Wind Speed" },
-		{ key = "HUD_SHOW_WIND_DIRECTION", type = "boolean", label = "HUD Wind Direction" },
-		{ key = "HUD_SHOW_PLAYER_SPEED", type = "boolean", label = "HUD Player Speed" },
-		{ key = "HUD_HEART_MARGIN_X", step = 1, min = 0, max = 100 },
-		{ key = "HUD_HEART_MARGIN_Y", step = 1, min = 0, max = 100 },
-		{ key = "HUD_HEART_SPACING", step = 1, min = 5, max = 60 },
-		{ key = "HUD_EMPTY_HEART_SCALE", step = 0.05, min = 0.1, max = 2, decimals = 2 },
-		{ key = "WIND_BAR_WAVE_AMPLITUDE", step = 1, min = 0, max = 40 },
-		{ key = "WIND_BAR_WAVE_WAVELENGTH", step = 1, min = 2, max = 100 },
-		{ key = "WIND_BAR_WAVE_SPEED", step = 5, min = 0, max = 200 },
-	} },
-	{ name = "Levels", items = {
-		{ key = "LEVEL_ENEMY_STEP", step = 1, min = 1, max = 50 },
-		{ key = "LEVEL_WIND_STEP_INTERVAL", step = 1, min = 1, max = 20 },
-		{ key = "LEVEL_WIND_SPEED_CHANGE_RATE_STEP", step = 0.1, min = 0, max = 5, decimals = 2 },
-		{ key = "LEVEL_WIND_CHANGE_INTERVAL_STEP", step = 0.25, min = 0, max = 10, decimals = 2 },
-		{ key = "WIND_CHANGE_INTERVAL_FLOOR", step = 1, min = 1, max = 30 },
-	} },
-	{ name = "Title Screen", items = {
-		{ key = "TITLE_MENU_DELAY", step = 0.5, min = 0, max = 20, decimals = 1 },
-	} },
-	{ name = "Instructions", items = {
-		{ key = "INSTRUCTIONS_CRANK_SECONDS", step = 0.5, min = 0.5, max = 20, decimals = 1 },
-		{ key = "INSTRUCTIONS_TRIM_PRESSES", step = 1, min = 1, max = 20 },
-		{ key = "INSTRUCTIONS_BROADSIDE_PRESSES", step = 1, min = 1, max = 20 },
-		{ key = "INSTRUCTIONS_DUMMY_DISTANCE", step = 10, min = 20, max = 600 },
-		{ key = "INSTRUCTIONS_OUT_OF_RANGE_HINT_SECONDS", step = 1, min = 1, max = 60 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_TOP", step = 1, min = 0, max = 100 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_MARGIN_RIGHT", step = 1, min = 0, max = 100 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_PADDING_X", step = 1, min = 0, max = 40 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_PADDING_Y", step = 1, min = 0, max = 40 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_RADIUS", step = 1, min = 0, max = 30 },
-		{ key = "INSTRUCTIONS_TEXT_LINE_GAP", step = 1, min = 0, max = 20 },
-		{ key = "INSTRUCTIONS_TEXT_BOX_MAX_WIDTH", step = 10, min = 50, max = 400 },
-	} },
-}
-
--- "WATER_WAVELET_LENGTH_MIN" -> "Water Wavelet Length Min".
----@param key string
----@return string
-local function titleCase(key)
-	return (key:gsub("_", " "):gsub("%a[%w']*", function(word)
-		return word:sub(1, 1):upper() .. word:sub(2):lower()
-	end))
-end
+-- Local alias -- every reference below used to mean "the CATEGORIES/ITEMS
+-- declared in this file"; they now live in ConfigTuning.lua instead (see the
+-- file header above), but keeping the short name avoids touching every call
+-- site's punctuation.
+local ITEMS = ConfigTuning.ITEMS
 
 ---@param v number
 ---@param decimals integer
@@ -201,24 +83,7 @@ local function roundTo(v, decimals)
 	return math.floor(v * mult + 0.5) / mult
 end
 
--- Flattened once at load time, in on-screen order. `selected` (and
--- moveSelection/adjustValue/toggleBoolean below) index directly into this --
--- unlike ROWS in the old hand-rolled layout, there's no separate "every row
--- including headers" array anymore: MenuCard takes headerBefore on the
--- item itself and inserts the header display-side, so ITEMS' numbering
--- never has to account for them.
-local ITEMS = {}
-for _, category in ipairs(CATEGORIES) do
-	for j, item in ipairs(category.items) do
-		item.type = item.type or "number"
-		item.decimals = item.decimals or 0
-		item.label = item.label or titleCase(item.key)
-		if j == 1 then item.headerBefore = category.name end
-		ITEMS[#ITEMS + 1] = item
-	end
-end
-
----@param item TuningScene.Item
+---@param item ConfigTuning.Item
 ---@return string
 local function formatValue(item)
 	if item.type == "boolean" then
@@ -227,7 +92,7 @@ local function formatValue(item)
 	return string.format("%." .. item.decimals .. "f", Config[item.key])
 end
 
----@param item TuningScene.Item
+---@param item ConfigTuning.Item
 ---@return string
 local function formatTitle(item)
 	if item.type == "boolean" then
@@ -236,7 +101,7 @@ local function formatTitle(item)
 	return item.label .. ": " .. formatValue(item)
 end
 
----@param item TuningScene.Item
+---@param item ConfigTuning.Item
 ---@return string
 local function formatDescription(item)
 	if item.type == "boolean" then
@@ -274,11 +139,38 @@ end
 function TuningScene:start()
 	TuningScene.super.start(self)
 	scene = self
+
+	loadDefaultsMenuItem = playdate.getSystemMenu():addMenuItem("Load Defaults", function()
+		ConfigTuning.loadDefaults()
+		Noble.transition(TuningDiffScene)
+	end)
+	loadCustomMenuItem = playdate.getSystemMenu():addMenuItem("Load Custom", function()
+		local loaded = ConfigTuning.loadCustom()
+		Noble.transition(TuningDiffScene, nil, nil, nil, {
+			message = loaded and nil or "No custom save found -- nothing changed.",
+		})
+	end)
+	saveCustomMenuItem = playdate.getSystemMenu():addMenuItem("Save Custom", function()
+		ConfigTuning.saveCustom()
+	end)
 end
 
 function TuningScene:finish()
 	TuningScene.super.finish(self)
 	if scene == self then scene = nil end
+
+	if loadDefaultsMenuItem then
+		playdate.getSystemMenu():removeMenuItem(loadDefaultsMenuItem)
+		loadDefaultsMenuItem = nil
+	end
+	if loadCustomMenuItem then
+		playdate.getSystemMenu():removeMenuItem(loadCustomMenuItem)
+		loadCustomMenuItem = nil
+	end
+	if saveCustomMenuItem then
+		playdate.getSystemMenu():removeMenuItem(saveCustomMenuItem)
+		saveCustomMenuItem = nil
+	end
 end
 
 function TuningScene:rebuild()

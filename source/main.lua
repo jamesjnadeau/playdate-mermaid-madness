@@ -18,6 +18,7 @@ import "libraries/playout"
 import "scripts/utilities/Config"
 import "scripts/enemies/ConfigEnemy"
 import "scripts/player/ConfigUpgrades"
+import "scripts/utilities/ConfigTuning"
 import "scripts/utilities/Utils"
 import "scripts/utilities/Ship"
 import "scripts/enemies/Enemy"
@@ -36,6 +37,7 @@ import "scenes/TitleScene"
 import "scenes/InstructionsScene"
 import "scenes/SettingsScene"
 import "scenes/TuningScene"
+import "scenes/TuningDiffScene"
 import "scenes/GameScene"
 import "scenes/GameSceneMain"
 import "scenes/GameSceneDemo"
@@ -83,14 +85,11 @@ if not StartScene then
 end
 
 -- Background music: plays the first bundled song (source/assets/songs,
--- alphabetically) by default -- a no-op if none are bundled. The system
--- menu's "Music" checkmark is the player-facing on/off switch; it and
--- SettingsScene's Sound section both go through MusicPlayer.setEnabled/
--- selectSong, so all three stay in sync (see Config.MUSIC_ENABLED/MUSIC_SONG).
+-- alphabetically) by default -- a no-op if none are bundled. The
+-- player-facing on/off switch lives in SettingsScene's Sound section (a
+-- "Music" toggle) rather than the system menu, keeping the system menu free
+-- for scene-specific items -- see Config.MUSIC_ENABLED/MUSIC_SONG.
 MusicPlayer.playDefault()
-playdate.getSystemMenu():addCheckmarkMenuItem("Music", Config.MUSIC_ENABLED, function(value)
-	MusicPlayer.setEnabled(value)
-end)
 
 -- Boot the engine.
 -- Add a short delay (e.g., 2 frames) before starting the first scene
