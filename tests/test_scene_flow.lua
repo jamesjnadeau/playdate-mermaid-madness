@@ -724,8 +724,8 @@ function TestSceneFlow:testGameSceneTrainingEnemySelectConfirmSetsForcedType()
 	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
 	local menuItems = playdate.getSystemMenu():getMenuItems()
 	lu.assertEquals(#menuItems, 2)
-	lu.assertEquals(menuItems[1].name, "Select Enemy")
-	lu.assertEquals(menuItems[2].name, "Test Upgrade")
+	lu.assertEquals(menuItems[1].name, "Enemy ⊙")
+	lu.assertEquals(menuItems[2].name, "Upgrade 🎣")
 
 	menuItems[1].callback() -- same as choosing it from the system menu
 	lu.assertEquals(currentClassName(), "EnemySelectScene")

@@ -47,10 +47,10 @@ end
 
 function GameSceneTraining:start()
 	GameSceneTraining.super.start(self)
-	selectEnemyMenuItem = playdate.getSystemMenu():addMenuItem("Enemy 🎁", function()
+	selectEnemyMenuItem = playdate.getSystemMenu():addMenuItem("Enemy ⊙", function()
 		Noble.transition(EnemySelectScene)
 	end)
-	testUpgradeMenuItem = playdate.getSystemMenu():addMenuItem("Upgrade 🔼", function()
+	testUpgradeMenuItem = playdate.getSystemMenu():addMenuItem("Upgrade 🎣", function()
 		Noble.transition(UpgradeTestScene)
 	end)
 end
