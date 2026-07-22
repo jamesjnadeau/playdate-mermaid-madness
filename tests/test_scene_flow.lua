@@ -63,21 +63,25 @@ function TestSceneFlow:testTitleMenuNavigationWraps()
 	lu.assertEquals(Noble.currentScene().selected, 2) -- back to "Training"
 end
 
--- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
--- TitleScene.CRANK_DEGREES_PER_ITEM), same mechanism as TuningScene's below.
+-- Exercises the crank fast-scroll path (moves one item per
+-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees), same mechanism as TuningScene's
+-- below. Degree amounts are derived from the live Config value rather than
+-- hardcoded, so this doesn't drift out of sync if that value is retuned.
 function TestSceneFlow:testTitleMenuCrankScroll()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
+	local leftover = math.floor(D / 3)
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.selected, 2) -- default: "Training"
 
-	Noble.Input.fire("cranked", 57) -- 2 full items (40 deg) + 17 deg leftover
+	Noble.Input.fire("cranked", 2 * D + leftover) -- 2 full items + leftover
 	lu.assertEquals(scene.selected, 4) -- "Settings"
-	lu.assertEquals(scene.crankAccum, 17)
+	lu.assertEquals(scene.crankAccum, leftover)
 
-	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one item back, 0 leftover
+	Noble.Input.fire("cranked", -(D + leftover)) -- one item back, 0 leftover
 	lu.assertEquals(scene.selected, 3) -- "Instructions"
 	lu.assertEquals(scene.crankAccum, 0)
 
-	Noble.Input.fire("cranked", -20) -- one more item back
+	Noble.Input.fire("cranked", -D) -- one more item back
 	lu.assertEquals(scene.selected, 2) -- "Training"
 end
 
@@ -231,20 +235,22 @@ function TestSceneFlow:testTitleSettingsToggleAndBack()
 	lu.assertEquals(currentClassName(), "TitleScene")
 end
 
--- Exercises the crank fast-scroll path (moves one row per 20 degrees, see
--- SettingsScene.CRANK_DEGREES_PER_ROW), same mechanism as TuningScene's.
+-- Exercises the crank fast-scroll path (moves one row per
+-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees), same mechanism as TuningScene's.
 function TestSceneFlow:testTitleSettingsCrankScroll()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
+	local leftover = math.floor(D / 3)
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("downButtonDown") -- 2 -> 4, "Settings"
 	Noble.Input.fire("AButtonDown")
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.selected, 1)
 
-	Noble.Input.fire("cranked", 57) -- 2 full rows (40 deg) + 17 deg leftover
+	Noble.Input.fire("cranked", 2 * D + leftover) -- 2 full rows + leftover
 	lu.assertEquals(scene.selected, 3)
-	lu.assertEquals(scene.crankAccum, 17)
+	lu.assertEquals(scene.crankAccum, leftover)
 
-	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one row back, 0 leftover
+	Noble.Input.fire("cranked", -(D + leftover)) -- one row back, 0 leftover
 	lu.assertEquals(scene.selected, 2)
 	lu.assertEquals(scene.crankAccum, 0)
 end
@@ -355,26 +361,28 @@ function TestSceneFlow:testTitleTuningAdjustNumberThenBack()
 	lu.assertEquals(currentClassName(), "SettingsScene")
 end
 
--- Exercises the crank fast-scroll path (moves one row per 20 degrees, see
--- TuningScene.CRANK_DEGREES_PER_ROW) and A's toggle behavior on a boolean
--- row. Config.HUD_SHOW_WIND_SPEED is ITEMS[63]: 57 rows across the
+-- Exercises the crank fast-scroll path (moves one row per
+-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees) and A's toggle behavior on a
+-- boolean row. Config.HUD_SHOW_WIND_SPEED is ITEMS[63]: 57 rows across the
 -- Water/Wind/Explosions/Ship/Sail/Trident categories, then 5 more HUD rows
 -- (the OFFSCREEN_INDICATOR_* fields) precede it within "HUD" -- see
 -- TuningScene.lua's CATEGORIES table; update this test if that ordering
 -- changes.
 function TestSceneFlow:testTitleTuningCrankScrollAndToggleBoolean()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
+	local leftover = math.floor(D / 3)
 	enterTuningFromTitle()
 	local scene = Noble.currentScene()
 
-	Noble.Input.fire("cranked", 137) -- 6 full rows (120 deg) + 17 deg leftover
+	Noble.Input.fire("cranked", 6 * D + leftover) -- 6 full rows + leftover
 	lu.assertEquals(scene.selected, 7)
-	lu.assertEquals(scene.crankAccum, 17)
+	lu.assertEquals(scene.crankAccum, leftover)
 
-	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one row back, 0 leftover
+	Noble.Input.fire("cranked", -(D + leftover)) -- one row back, 0 leftover
 	lu.assertEquals(scene.selected, 6)
 	lu.assertEquals(scene.crankAccum, 0)
 
-	Noble.Input.fire("cranked", 57 * 20) -- currently at row 6; jump straight to row 63
+	Noble.Input.fire("cranked", 57 * D) -- currently at row 6; jump straight to row 63
 	lu.assertEquals(scene.selected, 63)
 
 	local before = Config.HUD_SHOW_WIND_SPEED
@@ -451,18 +459,19 @@ function TestSceneFlow:testGameSceneTrainingEnemySelectConfirmSetsForcedType()
 end
 
 -- GameScene.enemyTypes is stubbed to 2 entries in tests (see
--- mock_game_scene.lua), so a single 20-degree crank tick is enough to move
--- one item and wrap back.
+-- mock_game_scene.lua), so a single Config.MENU_CRANK_DEGREES_PER_ITEM crank
+-- tick is enough to move one item and wrap back.
 function TestSceneFlow:testGameSceneTrainingEnemySelectCrankScrollWraps()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
 	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
 	playdate.getSystemMenu():getMenuItems()[1].callback() -- -> EnemySelectScene
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.selected, 1)
 
-	Noble.Input.fire("cranked", 20)
+	Noble.Input.fire("cranked", D)
 	lu.assertEquals(scene.selected, 2)
 
-	Noble.Input.fire("cranked", 20) -- wraps back to 1
+	Noble.Input.fire("cranked", D) -- wraps back to 1
 	lu.assertEquals(scene.selected, 1)
 end
 
@@ -495,19 +504,21 @@ function TestSceneFlow:testGameSceneTrainingUpgradeTestApplyAppliesAndReturns()
 	lu.assertEquals(Config.SHIP_ACCEL, before * 1.25)
 end
 
--- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
--- UpgradeTestScene.CRANK_DEGREES_PER_ITEM).
+-- Exercises the crank fast-scroll path (moves one item per
+-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees).
 function TestSceneFlow:testGameSceneTrainingUpgradeTestCrankScroll()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
+	local leftover = math.floor(D / 3)
 	Noble.Input.fire("AButtonDown") -- Title -> GameSceneTraining
 	playdate.getSystemMenu():getMenuItems()[2].callback() -- -> UpgradeTestScene
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.selected, 1)
 
-	Noble.Input.fire("cranked", 57) -- 2 full items (40 deg) + 17 deg leftover
+	Noble.Input.fire("cranked", 2 * D + leftover) -- 2 full items + leftover
 	lu.assertEquals(scene.selected, 3)
-	lu.assertEquals(scene.crankAccum, 17)
+	lu.assertEquals(scene.crankAccum, leftover)
 
-	Noble.Input.fire("cranked", -37) -- 17 - 37 = -20: one item back, 0 leftover
+	Noble.Input.fire("cranked", -(D + leftover)) -- one item back, 0 leftover
 	lu.assertEquals(scene.selected, 2)
 	lu.assertEquals(scene.crankAccum, 0)
 end
@@ -627,21 +638,22 @@ function TestSceneFlow:testUpgradeSelectBackButtonReturnsToSelectWithoutApplying
 	lu.assertNotEquals(Config[configKey], originalValue)
 end
 
--- Exercises the crank fast-scroll path (moves one item per 20 degrees, see
--- UpgradeSelectScene.CRANK_DEGREES_PER_ITEM) and confirms it stops moving the
--- selection once phase == "confirm" (moveSelection's own guard).
+-- Exercises the crank fast-scroll path (moves one item per
+-- Config.MENU_CRANK_DEGREES_PER_ITEM degrees) and confirms it stops moving
+-- the selection once phase == "confirm" (moveSelection's own guard).
 function TestSceneFlow:testUpgradeSelectCrankScrollAndStopsAfterConfirm()
+	local D = Config.MENU_CRANK_DEGREES_PER_ITEM
 	Noble.transition(UpgradeSelectScene, nil, nil, nil, { level = 2, completedLevel = 1, totalDefeated = 0 })
 	local scene = Noble.currentScene()
 	lu.assertEquals(scene.selected, 1)
 
-	Noble.Input.fire("cranked", 20)
+	Noble.Input.fire("cranked", D)
 	lu.assertEquals(scene.selected, 2)
 
 	Noble.Input.fire("AButtonDown") -- select -> confirm
 	lu.assertEquals(scene.phase, "confirm")
 
-	Noble.Input.fire("cranked", 20) -- no-op once in "confirm" phase
+	Noble.Input.fire("cranked", D) -- no-op once in "confirm" phase
 	lu.assertEquals(scene.selected, 2)
 end
 
