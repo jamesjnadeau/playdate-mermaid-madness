@@ -170,6 +170,16 @@ end
 function Enemy:onRamHit(ship)
 end
 
+-- Hook for enemy-specific cleanup when this enemy is defeated and dropped
+-- from GameScene.enemies, called right after GameScene:addExplosion at each
+-- of its three kill sites (tridentball hit, Storm Cloud tick, auto-lightning
+-- strike). Default no-op; overridden by EnemyRogueWave to release its trail
+-- particle system -- see EnemyRogueWave:onRemoved. Not called on scene exit
+-- (GameScene:finish wipes every particle system at once via
+-- clearAllParticles, so per-enemy cleanup would be redundant there).
+function Enemy:onRemoved()
+end
+
 -- Bakes the white bow "eye" dot into the cached body image alongside the
 -- hull -- see Ship:drawBodyLocal/buildBodyImage.
 ---@param cx number

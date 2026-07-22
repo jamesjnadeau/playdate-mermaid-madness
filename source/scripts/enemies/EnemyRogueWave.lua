@@ -31,6 +31,7 @@ local gfx <const> = playdate.graphics
 ---@class EnemyRogueWave : Enemy
 ---@field state string "charging" | "stopping" | "turning" -- see EnemyRogueWave:update
 ---@field stateTimer number seconds elapsed in the current state
+---@field trail? table ParticleCircle, nil when Config.ENEMY_ROGUEWAVE_TRAIL_ENABLED is false -- see EnemyRogueWave:update/onRemoved
 EnemyRogueWave = class("EnemyRogueWave").extends(Enemy) or EnemyRogueWave
 
 -- Unlocked starting this level (see Config.ENEMY_ROGUEWAVE_MIN_LEVEL /
@@ -64,6 +65,17 @@ function EnemyRogueWave:init(x, y, heading)
 
 	self.state = "charging"
 	self.stateTimer = 0
+
+	-- Trail Setup: a single bubble stream off the stern -- see
+	-- EnemyRogueWave:update (spawning) and :draw (rendering, under the hull).
+	if Config.ENEMY_ROGUEWAVE_TRAIL_ENABLED then
+		self.trail = ParticleCircle(x, y)
+		self.trail:setMode(Particles.modes.DECAY)
+		self.trail:setSize(Config.ENEMY_ROGUEWAVE_TRAIL_SIZE_MIN, Config.ENEMY_ROGUEWAVE_TRAIL_SIZE_MAX)
+		self.trail:setDecay(Config.ENEMY_ROGUEWAVE_TRAIL_DECAY)
+		self.trail:setSpeed(Config.ENEMY_ROGUEWAVE_TRAIL_SPEED_MIN, Config.ENEMY_ROGUEWAVE_TRAIL_SPEED_MAX)
+		self.trail:setColor(Config.ENEMY_ROGUEWAVE_TRAIL_COLOR)
+	end
 end
 
 -- See Enemy:previewStats -- self.moveSpeed/turnRateMax are inherited from
@@ -131,6 +143,17 @@ function EnemyRogueWave:update(targetX, targetY, windDirection, windSpeed)
 		self.y = self.y + wy * push * dt
 	end
 
+	-- Bubble trail: only while actually under way ("charging"/"stopping"),
+	-- not while pinned at speed 0 during "turning" -- see
+	-- Config.ENEMY_ROGUEWAVE_TRAIL_MIN_SPEED.
+	if self.trail and self.speed > Config.ENEMY_ROGUEWAVE_TRAIL_MIN_SPEED then
+		local sx, sy = self:sternPosition()
+		local back = Utils.wrapDeg(self.heading + 180)
+		self.trail:moveTo(sx, sy)
+		self.trail:setSpread(back - Config.ENEMY_ROGUEWAVE_TRAIL_SPREAD, back + Config.ENEMY_ROGUEWAVE_TRAIL_SPREAD)
+		self.trail:add(Config.ENEMY_ROGUEWAVE_TRAIL_COUNT)
+	end
+
 	self:updateLeash(targetX, targetY, dt)
 end
 
@@ -191,9 +214,26 @@ function EnemyRogueWave:drawBodyLocal(cx, cy)
 end
 
 function EnemyRogueWave:draw()
+	-- Trail drawn (and advanced -- see pdParticles' ParticleCircle:update,
+	-- which animates and renders in one call, same as Player:drawWake) before
+	-- the hull so bubbles sit under it, matching Player's wake layering.
+	if self.trail then self.trail:update() end
+
 	Ship.draw(self)
 
 	if self.health < self.maxHealth then
 		self:drawHealthBar()
+	end
+end
+
+-- Releases the trail's pdParticles registration -- see Enemy:onRemoved.
+-- Without this, a defeated wave's orphaned trail would keep being iterated
+-- by Particles:update() every frame for the rest of the level even after its
+-- bubbles finish decaying (see the "Trailing bubble particles" note in
+-- ConfigEnemy.lua).
+function EnemyRogueWave:onRemoved()
+	if self.trail then
+		self.trail:remove()
+		self.trail = nil
 	end
 end

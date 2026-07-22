@@ -158,6 +158,23 @@ Config.ENEMY_ROGUEWAVE_MIN_LEVEL = 7  -- unlocked starting this level -- see Con
 -- health bar out by the difference to clear it regardless of heading.
 Config.ENEMY_ROGUEWAVE_HEALTH_BAR_OFFSET = Config.ENEMY_ROGUEWAVE_LENGTH - Config.ENEMY_ROGUEWAVE_RADIUS
 
+-- Trailing bubble particles spawned off the stern while the wave is under
+-- way (see EnemyRogueWave:init/update) -- modeled on Config.SHIP_WAKE_* for
+-- Player's wake, but a single stream rather than twin port/starboard ones,
+-- since a rogue wave doesn't have hull sides to speak of. TRAIL_MIN_SPEED
+-- keeps it from spawning bubbles while fully stopped and turning (self.speed
+-- is pinned at 0 there -- see EnemyRogueWave:update).
+Config.ENEMY_ROGUEWAVE_TRAIL_ENABLED   = true
+Config.ENEMY_ROGUEWAVE_TRAIL_MIN_SPEED = 8    -- px/second below which no bubbles spawn
+Config.ENEMY_ROGUEWAVE_TRAIL_SIZE_MIN  = 1
+Config.ENEMY_ROGUEWAVE_TRAIL_SIZE_MAX  = 3
+Config.ENEMY_ROGUEWAVE_TRAIL_DECAY     = 0.12
+Config.ENEMY_ROGUEWAVE_TRAIL_SPEED_MIN = 1
+Config.ENEMY_ROGUEWAVE_TRAIL_SPEED_MAX = 3
+Config.ENEMY_ROGUEWAVE_TRAIL_SPREAD    = 26   -- +/- degrees scattered around dead-astern
+Config.ENEMY_ROGUEWAVE_TRAIL_COUNT     = 2    -- particles added per tick while moving
+Config.ENEMY_ROGUEWAVE_TRAIL_COLOR     = gfx.kColorBlack
+
 ---------------------------
 -- Enemy: Sea Serpent --
 ---------------------------

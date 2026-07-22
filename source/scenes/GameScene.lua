@@ -399,6 +399,7 @@ function GameScene:fireLightning(target)
 		for i = #self.enemies, 1, -1 do
 			if self.enemies[i] == target then
 				self:addExplosion(target)
+				target:onRemoved()
 				table.remove(self.enemies, i)
 				self:enemyDefeated()
 				break
@@ -490,6 +491,7 @@ function GameScene:updateStormClouds(dt)
 					Sound.playEnemyHit()
 					if not e.alive then
 						self:addExplosion(e)
+						e:onRemoved()
 						table.remove(self.enemies, i)
 						self:enemyDefeated()
 					end
@@ -752,6 +754,7 @@ function GameScene:tickGame()
 				hit = true
 				if not e.alive then
 					self:addExplosion(e)
+					e:onRemoved()
 					table.remove(self.enemies, j)
 					self:enemyDefeated()
 				end
