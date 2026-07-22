@@ -5,7 +5,13 @@
 -- shown, rather than just reading static text. Every control has two
 -- directions (crank one way / the other, Up / Down, Left / Right), and each
 -- gets its own step, so the player exercises both instead of whichever's
--- more convenient. Ⓑ exits back to Title at any point, regardless of step.
+-- more convenient.
+--
+-- Opens with a "do you know how to sail?" gate (STEP_ASK_KNOW_SAILING /
+-- STEP_CONFIRM_KNOW_SAILING): Ⓐ ("yes") advances ask -> confirm -> this
+-- walkthrough; Ⓑ ("no") on either sends the player to the remedial
+-- SailingInstructions lesson instead -- see onAButtonDown/onBButtonDown.
+-- Once past the gate, Ⓑ exits back to Title at any point, regardless of step.
 
 import "scripts/utilities/Config"
 import "scripts/utilities/Utils"
@@ -20,17 +26,27 @@ local gfx <const> = playdate.graphics
 ---@field outOfRangeSeconds number seconds the broadside steps' target has been continuously out of range, see tickGame/onBroadsideButtonDown; reset to 0 by advanceStep
 InstructionsScene = class("InstructionsScene").extends(GameScene) or InstructionsScene
 
+-- The walkthrough opens with a "do you know how to sail?" gate (see
+-- onAButtonDown/onBButtonDown below): Ⓐ ("yes") advances ask -> confirm ->
+-- the normal walkthrough; Ⓑ ("no") on either sends the player to
+-- SailingInstructions instead. Everything from STEP_CRANK_FORWARD down is
+-- the pre-existing walkthrough, just renumbered to make room.
+InstructionsScene.STEP_ASK_KNOW_SAILING     = 1
+InstructionsScene.STEP_CONFIRM_KNOW_SAILING = 2
+
 -- "Forward"/"backward" just label the two signs of crank delta (positive vs
 -- negative) -- not a claim about which is physically clockwise.
-InstructionsScene.STEP_CRANK_FORWARD  = 1
-InstructionsScene.STEP_CRANK_BACKWARD = 2
-InstructionsScene.STEP_TRIM_UP        = 3
-InstructionsScene.STEP_TRIM_DOWN      = 4
-InstructionsScene.STEP_BROADSIDE_LEFT  = 5
-InstructionsScene.STEP_BROADSIDE_RIGHT = 6
-InstructionsScene.STEP_DONE            = 7
+InstructionsScene.STEP_CRANK_FORWARD  = 3
+InstructionsScene.STEP_CRANK_BACKWARD = 4
+InstructionsScene.STEP_TRIM_UP        = 5
+InstructionsScene.STEP_TRIM_DOWN      = 6
+InstructionsScene.STEP_BROADSIDE_LEFT  = 7
+InstructionsScene.STEP_BROADSIDE_RIGHT = 8
+InstructionsScene.STEP_DONE            = 9
 
 InstructionsScene.prompts = {
+	[InstructionsScene.STEP_ASK_KNOW_SAILING]     = "Do you know how to sail?",
+	[InstructionsScene.STEP_CONFIRM_KNOW_SAILING] = "Are you sure?\nYou'll be lost to the sea if you don't know how to sail.",
 	[InstructionsScene.STEP_CRANK_FORWARD]  = "Crank one way to steer the helm",
 	[InstructionsScene.STEP_CRANK_BACKWARD] = "Now crank the other way",
 	[InstructionsScene.STEP_TRIM_UP]        = "Press Up to let out the sail",
@@ -44,10 +60,13 @@ InstructionsScene.prompts = {
 InstructionsScene.OUT_OF_RANGE_MESSAGE = "Out of range -- close the distance!"
 InstructionsScene.OUT_OF_RANGE_HINT_MESSAGE = "Look for a triangle marker on your screen showing where the enemy is"
 
----@param sceneProperties? table
+---@param sceneProperties? table skipKnowSailingPrompt (default false) skips straight to STEP_CRANK_FORWARD, bypassing the ask/confirm gate -- set by SailingInstructions once the player's proven they can sail
 function InstructionsScene:resetGame(sceneProperties)
 	InstructionsScene.super.resetGame(self, sceneProperties)
-	self.step = InstructionsScene.STEP_CRANK_FORWARD
+	sceneProperties = sceneProperties or {}
+	self.step = sceneProperties.skipKnowSailingPrompt
+		and InstructionsScene.STEP_CRANK_FORWARD
+		or InstructionsScene.STEP_ASK_KNOW_SAILING
 	self.stepProgress = 0
 	self.outOfRangeSeconds = 0
 end
@@ -134,11 +153,46 @@ shared.rightButtonDown = function()
 	end
 end
 
+shared.AButtonDown = function()
+	local s = GameScene.current()
+	if s then
+		---@cast s InstructionsScene
+		s:onAButtonDown()
+	end
+end
+
 shared.BButtonDown = function()
-	if GameScene.current() then Noble.transition(TitleScene) end
+	local s = GameScene.current()
+	if s then
+		---@cast s InstructionsScene
+		s:onBButtonDown()
+	end
 end
 
 InstructionsScene.inputHandler = shared
+
+-- Ⓐ ("yes") on the ask/confirm gate steps advances ask -> confirm -> the
+-- normal walkthrough (STEP_CONFIRM_KNOW_SAILING + 1 == STEP_CRANK_FORWARD by
+-- construction, so a plain advanceStep works for both). No-op on every other
+-- step -- there's nothing else for Ⓐ to do during the walkthrough itself.
+function InstructionsScene:onAButtonDown()
+	if self.step == InstructionsScene.STEP_ASK_KNOW_SAILING
+		or self.step == InstructionsScene.STEP_CONFIRM_KNOW_SAILING then
+		self:advanceStep()
+	end
+end
+
+-- Ⓑ ("no") on the ask/confirm gate steps sends the player to the remedial
+-- SailingInstructions lesson instead of the normal walkthrough; everywhere
+-- else Ⓑ keeps its original meaning of exiting to Title at any point.
+function InstructionsScene:onBButtonDown()
+	if self.step == InstructionsScene.STEP_ASK_KNOW_SAILING
+		or self.step == InstructionsScene.STEP_CONFIRM_KNOW_SAILING then
+		Noble.transition(SailingInstructions)
+		return
+	end
+	Noble.transition(TitleScene)
+end
 
 -- Crank input has no discrete "press", so each crank step clears once the
 -- player has spent Config.INSTRUCTIONS_CRANK_SECONDS actively turning it the
@@ -330,6 +384,10 @@ end
 -- shouldFlashOffscreenIndicator.
 ---@return string
 function InstructionsScene:stepSubline()
+	if self.step == InstructionsScene.STEP_ASK_KNOW_SAILING
+		or self.step == InstructionsScene.STEP_CONFIRM_KNOW_SAILING then
+		return "Ⓐ Yes    Ⓑ No"
+	end
 	local side = self:currentBroadsideSide()
 	if side then
 		if self.outOfRangeSeconds >= Config.INSTRUCTIONS_OUT_OF_RANGE_HINT_SECONDS then
@@ -391,7 +449,11 @@ function InstructionsScene:drawInstructionText()
 		gfx.drawTextInRect(subline, textX, textY + promptH + lineGap, sublineW, sublineH, nil, nil, kTextAlignment.center)
 	end
 
-	gfx.drawTextAligned("Ⓑ to exit", Config.SCREEN_W / 2, Config.SCREEN_H - 16, kTextAlignment.center)
+	-- Misleading during the ask/confirm gate steps, where Ⓑ means "no", not
+	-- "exit" -- see onBButtonDown.
+	if self.step > InstructionsScene.STEP_CONFIRM_KNOW_SAILING then
+		gfx.drawTextAligned("Ⓑ to exit", Config.SCREEN_W / 2, Config.SCREEN_H - 16, kTextAlignment.center)
+	end
 end
 
 function InstructionsScene:render()

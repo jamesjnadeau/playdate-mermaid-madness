@@ -35,6 +35,7 @@ import "scripts/utilities/MusicPlayer"
 import "scripts/utilities/MenuCard"
 import "scenes/TitleScene"
 import "scenes/InstructionsScene"
+import "scenes/SailingInstructions"
 import "scenes/SettingsScene"
 import "scenes/TuningScene"
 import "scenes/TuningDiffScene"
@@ -64,6 +65,7 @@ Noble.showFPS = Config.HUD_SHOW_FPS
 local sceneByName = {
 	Title = TitleScene,
 	Instructions = InstructionsScene,
+	SailingInstructions = SailingInstructions,
 	Settings = SettingsScene,
 	Tuning = TuningScene,
 	GameMain = GameSceneMain,

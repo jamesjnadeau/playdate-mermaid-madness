@@ -132,7 +132,7 @@ function GameScene:resetGame(sceneProperties)
 	self.windChangeIntervalMin = wind.changeIntervalMin
 	self.windChangeIntervalMax = wind.changeIntervalMax
 
-	self.windDirection = math.random() * 360
+	self.windDirection = self:fixedWindDirection() or (math.random() * 360)
 	self.windDirectionTarget = self.windDirection
 	self.windDirectionChangeRate = Config.WIND_DIRECTION_CHANGE_RATE_MIN
 	self.windSpeed = self:fixedWindSpeed()
@@ -185,6 +185,19 @@ end
 -- expose this as a player-adjustable setting.
 ---@return number?
 function GameScene:fixedWindSpeed()
+	return nil
+end
+
+-- Hook for a scene that wants wind direction pinned to one fixed value
+-- instead of the normal wander-over-time system -- mirrors fixedWindSpeed
+-- above exactly, just for direction: nil (the default) means "use the
+-- normal wandering direction"; a number locks windDirection/windDirectionTarget
+-- to exactly that value forever (wind speed still wanders/adjusts
+-- independently either way -- this only pins direction). SailingInstructions
+-- overrides this to 0 (blowing toward +x, screen left-to-right) so its
+-- point-of-sail lesson plays out against a constant, predictable wind.
+---@return number?
+function GameScene:fixedWindDirection()
 	return nil
 end
 
@@ -644,10 +657,15 @@ function GameScene:tickGame()
 		self.windSpeedChangeRate = self.windSpeedChangeRateMin
 			+ math.random() * (self.windSpeedChangeRateMax - self.windSpeedChangeRateMin)
 
-		local shift = Config.WIND_DIRECTION_CHANGE_MIN
-			+ math.random() * (Config.WIND_DIRECTION_CHANGE_MAX - Config.WIND_DIRECTION_CHANGE_MIN)
-		if math.random() < 0.5 then shift = -shift end
-		self.windDirectionTarget = Utils.wrapDeg(self.windDirection + shift)
+		local fixedDirection = self:fixedWindDirection()
+		if fixedDirection then
+			self.windDirectionTarget = fixedDirection
+		else
+			local shift = Config.WIND_DIRECTION_CHANGE_MIN
+				+ math.random() * (Config.WIND_DIRECTION_CHANGE_MAX - Config.WIND_DIRECTION_CHANGE_MIN)
+			if math.random() < 0.5 then shift = -shift end
+			self.windDirectionTarget = Utils.wrapDeg(self.windDirection + shift)
+		end
 		self.windDirectionChangeRate = Config.WIND_DIRECTION_CHANGE_RATE_MIN
 			+ math.random() * (Config.WIND_DIRECTION_CHANGE_RATE_MAX - Config.WIND_DIRECTION_CHANGE_RATE_MIN)
 

@@ -107,8 +107,41 @@ function TestSceneFlow:testTitleInstructionsAndBack()
 	Noble.Input.fire("AButtonDown")
 	lu.assertEquals(currentClassName(), "InstructionsScene")
 
+	-- Ⓑ on the "do you know how to sail?" gate means "no", not "exit" -- see
+	-- testInstructionsAskNoGoesToSailingInstructions. Answer "yes" (Ⓐ) twice
+	-- (ask, then the "are you sure?" confirm) to reach the normal walkthrough,
+	-- where Ⓑ resumes meaning "exit".
+	local scene = Noble.currentScene()
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(scene.step, InstructionsScene.STEP_CONFIRM_KNOW_SAILING)
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(scene.step, InstructionsScene.STEP_CRANK_FORWARD)
+
 	Noble.Input.fire("BButtonDown")
 	lu.assertEquals(currentClassName(), "TitleScene")
+end
+
+-- Ⓑ ("no") on the initial ask step skips straight to the remedial lesson.
+function TestSceneFlow:testInstructionsAskNoGoesToSailingInstructions()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(currentClassName(), "InstructionsScene")
+	lu.assertEquals(Noble.currentScene().step, InstructionsScene.STEP_ASK_KNOW_SAILING)
+
+	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "SailingInstructions")
+end
+
+-- Answering "yes" then reconsidering on the confirm step ("actually no")
+-- also lands on the remedial lesson.
+function TestSceneFlow:testInstructionsConfirmActuallyNoGoesToSailingInstructions()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("AButtonDown")
+	Noble.Input.fire("AButtonDown") -- "yes" -> confirm step
+	lu.assertEquals(Noble.currentScene().step, InstructionsScene.STEP_CONFIRM_KNOW_SAILING)
+
+	Noble.Input.fire("BButtonDown") -- "actually no"
+	lu.assertEquals(currentClassName(), "SailingInstructions")
 end
 
 -- Every control gets one step per direction, and each only clears once the
@@ -121,6 +154,8 @@ function TestSceneFlow:testInstructionsStepsRequireBothDirectionsThenBackAtAnyPo
 	Noble.Input.fire("downButtonDown")
 	Noble.Input.fire("AButtonDown")
 	local scene = Noble.currentScene()
+	Noble.Input.fire("AButtonDown") -- "yes" on the ask/confirm gate, see testTitleInstructionsAndBack
+	Noble.Input.fire("AButtonDown")
 	lu.assertEquals(scene.step, InstructionsScene.STEP_CRANK_FORWARD)
 
 	Noble.Input.fire("cranked", -5) -- wrong direction: doesn't count
@@ -216,6 +251,146 @@ function TestSceneFlow:testInstructionsBroadsideRequiresAnInRangeHit()
 	scene.outOfRangeSeconds = Config.INSTRUCTIONS_OUT_OF_RANGE_HINT_SECONDS
 	lu.assertEquals(scene:stepSubline(), InstructionsScene.OUT_OF_RANGE_HINT_MESSAGE)
 	lu.assertTrue(scene:shouldFlashOffscreenIndicator(nil))
+end
+
+-- --- SailingInstructions -------------------------------------------------
+-- Heading-enforcement/upwind-progress/trim-press physics live on top of the
+-- real Player/Ship (mock_game_scene.lua's ship is a plain stub), so these
+-- tests stick to what's real under the mock: scene setup, the dialogue-beat
+-- state machine, the "enforcement policy" logic itself (pure heading math),
+-- and the system-menu items -- see CLAUDE.md's tests/ section. Deliberately
+-- never advances into DIALOGUE's "Bet you can't." beat (its "evilLaugh"
+-- sound cue) or lets a heading beat's off-course timer reach
+-- Config.SAILING_INSTRUCTIONS_LIGHTNING_INTERVAL_SECONDS, since both call
+-- into Sound.lua -- see mock_noble.lua's Sound stand-in.
+
+local function enterSailingInstructionsFromTitle()
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("AButtonDown") -- Title -> InstructionsScene
+	Noble.Input.fire("BButtonDown") -- "no" -> SailingInstructions
+	return Noble.currentScene()
+end
+
+function TestSceneFlow:testSailingInstructionsStartsDownwindWithFullSailAndFirstBeat()
+	local scene = enterSailingInstructionsFromTitle()
+	lu.assertEquals(currentClassName(), "SailingInstructions")
+
+	lu.assertEquals(scene.ship.heading, scene:fixedWindDirection())
+	lu.assertEquals(scene.ship.sailTrim, 1)
+	lu.assertEquals(scene.beatIndex, 1)
+	lu.assertEquals(scene.windSpeedOverride, Config.SHIP_MAX_SPEED - Config.SAILING_INSTRUCTIONS_WIND_SPEED_OFFSET)
+end
+
+function TestSceneFlow:testSailingInstructionsWindSpeedMenuItemsOnlyWhileActive()
+	local scene = enterSailingInstructionsFromTitle()
+
+	local menuItems = playdate.getSystemMenu():getMenuItems()
+	lu.assertEquals(#menuItems, 2)
+	lu.assertEquals(menuItems[1].name, "Increase Wind Speed")
+	lu.assertEquals(menuItems[2].name, "Decrease Wind Speed")
+
+	local before = scene.windSpeedOverride
+	menuItems[1].callback()
+	lu.assertEquals(scene.windSpeedOverride, before + Config.SAILING_INSTRUCTIONS_WIND_SPEED_MENU_STEP)
+	lu.assertEquals(scene.windSpeedTarget, scene.windSpeedOverride)
+
+	-- Floors at 0, doesn't go negative.
+	scene.windSpeedOverride = 2
+	menuItems[2].callback()
+	lu.assertEquals(scene.windSpeedOverride, 0)
+	menuItems[2].callback()
+	lu.assertEquals(scene.windSpeedOverride, 0)
+
+	Noble.transition(TitleScene)
+	lu.assertEquals(#playdate.getSystemMenu():getMenuItems(), 0) -- SailingInstructions:finish() cleared it
+end
+
+-- Ⓐ only advances a "line" beat once it's been up long enough to read.
+function TestSceneFlow:testSailingInstructionsLineBeatRequiresMinimumDisplayTime()
+	local scene = enterSailingInstructionsFromTitle()
+	lu.assertEquals(scene.beatIndex, 1)
+	lu.assertEquals(SailingInstructions.DIALOGUE[1].type, "line")
+
+	Noble.Input.fire("AButtonDown") -- too soon
+	lu.assertEquals(scene.beatIndex, 1)
+
+	local ticks = math.ceil(Config.SAILING_INSTRUCTIONS_DIALOGUE_MIN_SECONDS / Config.DT) + 1
+	for _ = 1, ticks do scene:tickGame() end
+	Noble.Input.fire("AButtonDown")
+	lu.assertEquals(scene.beatIndex, 2)
+end
+
+-- The "enforcement policy" (tickHeadingGate): off-course shows an annoyed
+-- message (edge-triggered -- doesn't change every tick while still off
+-- course); on-course for the hold duration clears the beat.
+function TestSceneFlow:testSailingInstructionsHeadingGateEnforcementPolicy()
+	local scene = enterSailingInstructionsFromTitle()
+	local headingBeatIndex
+	for i, beat in ipairs(SailingInstructions.DIALOGUE) do
+		if beat.type == "heading" then
+			headingBeatIndex = i
+			break
+		end
+	end
+	scene.beatIndex = headingBeatIndex
+	scene:resetBeatState()
+	local target = SailingInstructions.DIALOGUE[headingBeatIndex].target
+
+	scene.ship.heading = Utils.wrapDeg(target + 90) -- well outside tolerance
+	scene:tickGame()
+	lu.assertEquals(scene.offCourseMessage, SailingInstructions.OFF_COURSE_PHRASES[1])
+
+	scene:tickGame() -- still off course: message doesn't change every tick
+	lu.assertEquals(scene.offCourseMessage, SailingInstructions.OFF_COURSE_PHRASES[1])
+
+	scene.ship.heading = target
+	local holdTicks = math.ceil(Config.SAILING_INSTRUCTIONS_HEADING_HOLD_SECONDS / Config.DT) + 1
+	for _ = 1, holdTicks do scene:tickGame() end
+	lu.assertEquals(scene.beatIndex, headingBeatIndex + 1)
+	lu.assertNil(scene.offCourseMessage)
+end
+
+-- A "trim" beat clears after Config.SAILING_INSTRUCTIONS_TRIM_PRESSES
+-- presses of Down.
+function TestSceneFlow:testSailingInstructionsTrimBeatCountsDownPresses()
+	local scene = enterSailingInstructionsFromTitle()
+	local trimBeatIndex
+	for i, beat in ipairs(SailingInstructions.DIALOGUE) do
+		if beat.type == "trim" then
+			trimBeatIndex = i
+			break
+		end
+	end
+	scene.beatIndex = trimBeatIndex
+	scene:resetBeatState()
+
+	for i = 1, Config.SAILING_INSTRUCTIONS_TRIM_PRESSES - 1 do
+		Noble.Input.fire("downButtonDown")
+		Noble.Input.fire("downButtonUp")
+		scene:tickGame()
+		lu.assertEquals(scene.beatIndex, trimBeatIndex)
+	end
+	Noble.Input.fire("downButtonDown")
+	Noble.Input.fire("downButtonUp")
+	scene:tickGame()
+	lu.assertEquals(scene.beatIndex, trimBeatIndex + 1)
+end
+
+-- Ⓑ only does anything on the terminal "freeSail" beat, where it hands back
+-- to InstructionsScene with skipKnowSailingPrompt = true (bypassing the ask/
+-- confirm gate, since the player just proved they can sail).
+function TestSceneFlow:testSailingInstructionsFreeSailBButtonReturnsToInstructionsSkippingAskGate()
+	local scene = enterSailingInstructionsFromTitle()
+
+	Noble.Input.fire("BButtonDown") -- not the terminal beat yet: no-op
+	lu.assertEquals(currentClassName(), "SailingInstructions")
+
+	scene.beatIndex = #SailingInstructions.DIALOGUE
+	lu.assertEquals(SailingInstructions.DIALOGUE[scene.beatIndex].type, "freeSail")
+
+	Noble.Input.fire("BButtonDown")
+	lu.assertEquals(currentClassName(), "InstructionsScene")
+	lu.assertEquals(Noble.currentScene().step, InstructionsScene.STEP_CRANK_FORWARD)
 end
 
 function TestSceneFlow:testTitleSettingsToggleAndBack()

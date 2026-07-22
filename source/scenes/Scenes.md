@@ -20,6 +20,8 @@ flowchart TD
     Title -->|"Instructions (A/B)"| Instructions["InstructionsScene"]
     Title -->|"Settings (A/B)"| Settings["SettingsScene"]
 
+    Instructions -->|"B (no) on ask/confirm gate"| Sailing["SailingInstructions"]
+    Sailing -->|"B once free-sailing"| Instructions
     Instructions -->|"B"| Title
     Settings -->|"B"| Title
     Settings -->|"Tuning section: Open Tuning Menu (A)"| Tuning["TuningScene"]
@@ -216,7 +218,17 @@ Extends `GameScene` (like `GameSceneMain`/`GameSceneTraining`) instead of
 `NobleScene` directly, so the player's own ship is really sailing on real
 water while they work through a step-by-step walkthrough, drawn above the
 ship (which, like every `GameScene`, sits camera-locked at screen center) so
-the water, wake, and practice target stay visible underneath. Wind speed is
+the water, wake, and practice target stay visible underneath.
+
+Opens with a "do you know how to sail?" gate (`STEP_ASK_KNOW_SAILING` then
+`STEP_CONFIRM_KNOW_SAILING`) before the walkthrough itself: A ("yes")
+advances ask -> confirm ("Are you sure? You'll be lost to the sea if you
+don't know how to sail.") -> the normal walkthrough below; B ("no") on
+either step instead transitions to `SailingInstructions` (see below). Once
+past the gate, B exits to `TitleScene` at any point, same as before -- see
+`InstructionsScene:onAButtonDown`/`onBButtonDown`.
+
+Wind speed is
 pinned to `Config.SHIP_MAX_SPEED` for the whole scene (direction still
 wanders normally) via `InstructionsScene:fixedWindSpeed`, overriding
 `GameScene:fixedWindSpeed` (a hook, nil by default meaning "normal random
@@ -250,12 +262,59 @@ actually performs *that* direction enough — see `Config.INSTRUCTIONS_*`:
   `InstructionsScene:shouldFlashOffscreenIndicator`, overriding
   `GameScene`'s default rule of flashing whenever only one enemy is left).
 
-- **Reached from:** `TitleScene` ("Instructions").
+- **Reached from:** `TitleScene` ("Instructions"); `SailingInstructions`
+  (free-sailing phase, B) with `skipKnowSailingPrompt = true`.
 - **Controls:** real `GameScene` ship controls throughout (crank steers,
   Up/Down trims, Left/Right charges/fires a broadside) via
-  `GameScene.buildSharedInputHandler`, wrapped to also track step progress; B
-  returns to `TitleScene` at any point, regardless of step.
+  `GameScene.buildSharedInputHandler`, wrapped to also track step progress; A
+  answers "yes" on the ask/confirm gate steps; B answers "no" on those two
+  steps (-> `SailingInstructions`) or returns to `TitleScene` on every step
+  after them.
+- **sceneProperties read:** `skipKnowSailingPrompt` (default false) -- skips
+  straight to `STEP_CRANK_FORWARD`, bypassing the ask/confirm gate.
+
+## SailingInstructions
+
+Reached only from `InstructionsScene`'s ask/confirm gate ("no, I don't know
+how to sail"). Extends `InstructionsScene` (so it inherits the same real
+ship-on-real-water `GameScene` plumbing) but doesn't use any of
+`InstructionsScene`'s own `STEP_*`/`prompts` machinery — it's a
+content-driven dialogue interpreter narrated as a sarcastic, put-upon Zeus,
+driven entirely by the `SailingInstructions.DIALOGUE` array (a "beat" per
+line/lesson step: `line`, `heading`, `trim`, `upwindChallenge`, `freeSail`),
+plus `OFF_COURSE_PHRASES`/`UPWIND_MOCK_LINES` — see the file header comment
+for the full beat-type reference.
+
+Wind is pinned constant (blowing screen left -> right, `GameScene:fixedWindDirection`
+returns 0) rather than wandering, starting at `Config.SHIP_MAX_SPEED -
+Config.SAILING_INSTRUCTIONS_WIND_SPEED_OFFSET` and live-adjustable via two
+system-menu items, "Increase Wind Speed"/"Decrease Wind Speed" (2 of the
+3-item cap — see the note in `CLAUDE.md` — added in `:start()`, removed in
+`:finish()`, same pattern as `TuningScene`/`GameSceneTraining`). The ship
+starts dead downwind with the sail let all the way out (`resetGame`).
+
+The lesson walks the player through: turning slightly upwind toward the
+screen's exact bottom-right corner and trimming in to recover speed, then
+turning to face straight down and trimming in again, then an upwind
+challenge (`Config.SAILING_INSTRUCTIONS_UPWIND_DISTANCE_PX` of "distance
+made good" upwind). The two turn beats use the "enforcement policy"
+(`tickHeadingGate`): outside `Config.SAILING_INSTRUCTIONS_HEADING_TOLERANCE_DEG`
+of the requested heading shows an annoyed line from `OFF_COURSE_PHRASES`
+(edge-triggered) and, every `Config.SAILING_INSTRUCTIONS_LIGHTNING_INTERVAL_SECONDS`
+of continuous wrong heading, plays a random lightning-crack sound
+(`Sound.playLightning`) until corrected.
+
+- **Reached from:** `InstructionsScene` (B on `STEP_ASK_KNOW_SAILING` or
+  `STEP_CONFIRM_KNOW_SAILING`).
+- **Controls:** same shared ship controls as `InstructionsScene`; A advances
+  a plain dialogue line once it's been up long enough to read
+  (`Config.SAILING_INSTRUCTIONS_DIALOGUE_MIN_SECONDS`); Down counts toward
+  the current trim beat; B only does anything on the terminal beat (see
+  below).
 - **sceneProperties read:** none.
+- **Transitions out:** B on the terminal `freeSail` beat ("Press Ⓑ when you
+  are ready") -> `Noble.transition(InstructionsScene, nil, nil, nil, {
+  skipKnowSailingPrompt = true })`.
 
 ## SettingsScene
 

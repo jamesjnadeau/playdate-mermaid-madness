@@ -31,6 +31,7 @@ dofile("tests/support/mock_game_scene.lua") -- stands in for source/scenes/GameS
 
 dofile("source/scenes/TitleScene.lua")
 dofile("source/scenes/InstructionsScene.lua")
+dofile("source/scenes/SailingInstructions.lua") -- extends InstructionsScene, must load after it
 dofile("source/scenes/SettingsScene.lua")
 dofile("source/scenes/TuningScene.lua")
 dofile("source/scenes/TuningDiffScene.lua")

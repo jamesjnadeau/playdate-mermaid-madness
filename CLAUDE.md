@@ -139,14 +139,18 @@ The "Music" checkmark was later removed from the system menu too (moved into
 — not because the cap was hit again, but to make room for
 `TuningScene.lua`'s three scene-scoped items ("Load Defaults"/"Load
 Custom"/"Save Custom", added in `:start()`/removed in `:finish()`, same
-pattern as `GameSceneTraining`'s). So as of now there are two scenes that
-each use the full 3-item cap on their own — `GameSceneTraining` ("Select
-Enemy"/"Test Upgrade", 2 of 3) and `TuningScene` (all 3) — but never at the
-same time as each other, since only one scene is ever active. Adding an
-always-on item (like the old "Music" checkmark) back in `main.lua` would
-collide with whichever scene-scoped set is live; adding a fourth scene-scoped
-item to either scene requires first removing one of its existing three or
-moving it to an in-scene playout menu instead (see the pattern note above).
+pattern as `GameSceneTraining`'s). `SailingInstructions.lua` (added later)
+adds a third scene-scoped pair on the same pattern, "Increase Wind
+Speed"/"Decrease Wind Speed" (2 of 3). So as of now there are three scenes
+that each use some or all of the 3-item cap on their own —
+`GameSceneTraining` ("Select Enemy"/"Test Upgrade", 2 of 3), `TuningScene`
+(all 3), and `SailingInstructions` ("Increase Wind Speed"/"Decrease Wind
+Speed", 2 of 3) — but never at the same time as each other, since only one
+scene is ever active. Adding an always-on item (like the old "Music"
+checkmark) back in `main.lua` would collide with whichever scene-scoped set
+is live; adding another scene-scoped item to any of these three requires
+first removing one of its existing ones or moving it to an in-scene playout
+menu instead (see the pattern note above).
 
 ## Rendered songs are one file each, looped natively
 

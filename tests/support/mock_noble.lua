@@ -116,6 +116,20 @@ function playdate.sound.fileplayer.new(__path, __buffersize)
 	return player
 end
 
+-- Sound.lua stand-in --------------------------------------------------------
+
+-- SailingInstructions.lua calls Sound.playLightning()/Sound.playPlayerDeath()
+-- directly -- unlike other scenes, which only ever reach Sound.* through
+-- real GameScene.lua's own calls, swapped out entirely by
+-- mock_game_scene.lua for scene-flow tests. The real Sound.lua builds actual
+-- playdate.sound.synth/channel/twopolefilter/envelope objects at load time,
+-- none of which this file stubs (out of scope for scene-flow tests) -- these
+-- no-op stand-ins are just enough for SailingInstructions.lua to dofile and
+-- run without touching real audio.
+Sound = Sound or {}
+function Sound.playLightning() end
+function Sound.playPlayerDeath() end
+
 -- playdate.graphics / kTextAlignment ------------------------------------------
 
 playdate.graphics = playdate.graphics or {}
