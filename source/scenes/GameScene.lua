@@ -14,6 +14,7 @@ import "scripts/enemies/EnemySwordfish"
 import "scripts/enemies/EnemyKraken"
 import "scripts/enemies/EnemyRogueWave"
 import "scripts/enemies/EnemySeaSerpent"
+import "scripts/enemies/EnemyBlueWhale"
 import "scripts/player/Tridentball"
 import "scripts/player/StormCloud"
 import "scripts/utilities/Sound"
@@ -55,7 +56,7 @@ local gfx <const> = playdate.graphics
 ---@field charge number 0-1
 ---@field target? Enemy
 ---@field lightningTimer number seconds until auto-lightning can strike again, see updateAutoLightning
----@field enemyTypes table[] class-level: Enemy/EnemySwordfish/EnemyKraken/EnemyRogueWave/EnemySeaSerpent class tables eligible for random spawning
+---@field enemyTypes table[] class-level: Enemy/EnemySwordfish/EnemyKraken/EnemyRogueWave/EnemySeaSerpent/EnemyBlueWhale class tables eligible for random spawning
 GameScene = class("GameScene").extends(NobleScene) or GameScene
 
 -- File-local handle to the live scene so the (class-level) inputHandler
@@ -560,12 +561,12 @@ end
 
 -- Enemy classes eligible for random spawning, gated by level via each
 -- class's minLevel (Enemy.minLevel / EnemySwordfish.minLevel / EnemyKraken.minLevel /
--- EnemyRogueWave.minLevel / EnemySeaSerpent.minLevel, driven by
--- Config.ENEMY_MIN_LEVEL / Config.ENEMY_SWORDFISH_MIN_LEVEL /
+-- EnemyRogueWave.minLevel / EnemySeaSerpent.minLevel / EnemyBlueWhale.minLevel,
+-- driven by Config.ENEMY_MIN_LEVEL / Config.ENEMY_SWORDFISH_MIN_LEVEL /
 -- Config.ENEMY_KRAKEN_MIN_LEVEL / Config.ENEMY_ROGUEWAVE_MIN_LEVEL /
--- Config.ENEMY_SEA_SERPENT_MIN_LEVEL). Add new enemy types here to fold them
--- into spawnEnemy's random pick below.
-GameScene.enemyTypes = { Enemy, EnemySwordfish, EnemyKraken, EnemyRogueWave, EnemySeaSerpent }
+-- Config.ENEMY_SEA_SERPENT_MIN_LEVEL / Config.ENEMY_BLUE_WHALE_MIN_LEVEL). Add
+-- new enemy types here to fold them into spawnEnemy's random pick below.
+GameScene.enemyTypes = { Enemy, EnemySwordfish, EnemyKraken, EnemyRogueWave, EnemySeaSerpent, EnemyBlueWhale }
 
 -- Spawns one enemy at a random position around the ship. With no argument,
 -- picks uniformly among GameScene.enemyTypes entries unlocked at self.level

@@ -215,4 +215,50 @@ Config.ENEMY_SEA_SERPENT_TAIL_TAPER = 0.35
 -- the head, not below it) -- see Enemy.healthBarOffset.
 Config.ENEMY_SEA_SERPENT_HEALTH_BAR_OFFSET = 0
 
+---------------------------
+-- Enemy: Blue Whale --
+---------------------------
+-- An ambush Enemy variant (see EnemyBlueWhale.lua) that doesn't chase at all:
+-- it cycles through four states instead of steering toward the player --
+--   "submerged": invisible and harmless, for SUBMERGE_TIME seconds
+--   "warning":   still invisible, but a dithered circle at the spot it's about
+--     to surface (radius ATTACK_RADIUS) darkens over WARN_TIME seconds as the
+--     surfacing gets closer -- the player's cue to clear that spot
+--   "breaching": still invisible and harmless, for BREACH_TIME seconds -- a
+--     brief beat after the telegraph circle is gone and before the whale
+--     actually appears/hits, so the two never visually overlap
+--   "surfaced":  appears at that spot, throwing anything within ATTACK_RADIUS
+--     outward (Player:applyKnockback, same mechanism as EnemyRogueWave's
+--     charge hit), then sits there breathing -- vulnerable to tridents/Storm
+--     Cloud/lightning like any other enemy -- for SURFACE_TIME seconds
+-- before submerging again, retargeting the player's position at that moment,
+-- and repeating. See EnemyBlueWhale:update for the exact transitions.
+Config.ENEMY_BLUE_WHALE_WARN_TIME     = 2.5  -- seconds the darkening telegraph circle plays before surfacing
+Config.ENEMY_BLUE_WHALE_BREACH_TIME   = 0.2  -- seconds of nothing (no circle, no whale, no hit) between the circle vanishing and the whale surfacing/hitting
+Config.ENEMY_BLUE_WHALE_SURFACE_TIME  = 3    -- seconds spent surfaced ("breathing") before submerging again
+Config.ENEMY_BLUE_WHALE_SUBMERGE_TIME = 4    -- seconds spent submerged (invisible, harmless) before the next warning
+-- Radius (px) of both the warning telegraph circle and the knockback burst it
+-- promises -- kept as one value so the circle honestly previews the danger
+-- zone rather than just approximating it.
+Config.ENEMY_BLUE_WHALE_ATTACK_RADIUS = 70
+-- How far (px) the surfacing burst throws anything caught within
+-- ATTACK_RADIUS, outward from the point it surfaced at -- see
+-- EnemyBlueWhale:onRamHit and Player:applyKnockback, which derives the actual
+-- push speed from this distance plus the shared Config.KNOCKBACK_ACCEL/FRICTION
+-- tuning. Bigger than EnemyRogueWave's charge shove -- "great speed" from a
+-- much bigger animal.
+Config.ENEMY_BLUE_WHALE_KNOCKBACK_DISTANCE = 180
+Config.ENEMY_BLUE_WHALE_LENGTH = 40  -- half-length of the body ellipse when surfaced
+Config.ENEMY_BLUE_WHALE_BEAM   = 18  -- half-width of the body ellipse when surfaced
+Config.ENEMY_BLUE_WHALE_RADIUS = 26  -- collision radius while surfaced; smaller than LENGTH since the ellipse tapers at both ends
+Config.ENEMY_BLUE_WHALE_HEALTH = 4   -- tankier than any other enemy -- it's only ever hittable during its SURFACE_TIME window
+Config.ENEMY_BLUE_WHALE_DAMAGE = Config.ENEMY_DAMAGE * 2  -- touching a surfaced whale hurts more than a steady-homing enemy
+Config.ENEMY_BLUE_WHALE_COLOR = gfx.kColorBlack
+Config.ENEMY_BLUE_WHALE_OUTLINE_COLOR = gfx.kColorWhite
+Config.ENEMY_BLUE_WHALE_MIN_LEVEL = 7  -- unlocked starting this level -- see Config.ENEMY_MIN_LEVEL
+-- The tail fluke (see EnemyBlueWhale:drawBodyLocal) reaches to 1.3 * LENGTH
+-- past center, well past RADIUS -- see Enemy.healthBarOffset -- so nudge the
+-- health bar out by the difference to clear it regardless of heading.
+Config.ENEMY_BLUE_WHALE_HEALTH_BAR_OFFSET = Config.ENEMY_BLUE_WHALE_LENGTH * 1.3 - Config.ENEMY_BLUE_WHALE_RADIUS
+
 return Config
