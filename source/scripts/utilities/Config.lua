@@ -464,23 +464,23 @@ Config.INSTRUCTIONS_TEXT_BOX_MAX_WIDTH    = 220 -- px each line wraps at -- the 
 -- "do you know how to sail?" gate when the player says no. Wind is pinned
 -- (constant direction, adjustable speed) rather than wandering -- see
 -- GameScene:fixedWindDirection/fixedWindSpeed.
-Config.SAILING_INSTRUCTIONS_WIND_SPEED_OFFSET       = 5   -- px/s under SHIP_MAX_SPEED the lesson's wind starts at
-Config.SAILING_INSTRUCTIONS_WIND_SPEED_MENU_STEP    = 5   -- px/s the two system-menu items adjust wind speed by
+Config.SAILING_INSTRUCTIONS_WIND_SPEED_OFFSET       = 10   -- px/s under SHIP_MAX_SPEED the lesson's wind starts at
+Config.SAILING_INSTRUCTIONS_WIND_SPEED_MENU_STEP    = 10   -- px/s the two system-menu items adjust wind speed by
 -- "Enforcement policy" for the heading beats (see SailingInstructions.DIALOGUE
 -- type = "heading"): how close counts as "facing the requested direction",
 -- how long it has to stay there to clear the beat, and how the game scolds
 -- the player while they're facing the wrong way.
-Config.SAILING_INSTRUCTIONS_HEADING_TOLERANCE_DEG   = 10  -- degrees off a requested heading still counted as "facing it"
-Config.SAILING_INSTRUCTIONS_HEADING_HOLD_SECONDS    = 0.5 -- seconds the heading must stay in tolerance before a turn beat clears
+Config.SAILING_INSTRUCTIONS_HEADING_TOLERANCE_DEG   = 15  -- degrees off a requested heading still counted as "facing it"
+Config.SAILING_INSTRUCTIONS_HEADING_HOLD_SECONDS    = 1 -- seconds the heading must stay in tolerance before a turn beat clears
 Config.SAILING_INSTRUCTIONS_LIGHTNING_INTERVAL_SECONDS = 5   -- seconds of continuous wrong heading between lightning-sound scoldings
-Config.SAILING_INSTRUCTIONS_TRIM_PRESSES            = 3   -- Down presses to clear a trim beat
-Config.SAILING_INSTRUCTIONS_DIALOGUE_MIN_SECONDS    = 1.5 -- minimum seconds a plain dialogue line is shown before Ⓐ can advance it
+Config.SAILING_INSTRUCTIONS_TRIM_PRESSES            = 1   -- Down presses to clear a trim beat
+Config.SAILING_INSTRUCTIONS_DIALOGUE_MIN_SECONDS    = 0.75 -- minimum seconds a plain dialogue line is shown before Ⓐ can advance it
 -- Upwind challenge (SailingInstructions.DIALOGUE type = "upwindChallenge"):
 -- px of "distance made good" upwind required to finish, and how long the
 -- player gets before Zeus starts mocking them for taking so long.
-Config.SAILING_INSTRUCTIONS_UPWIND_DISTANCE_PX      = 300 -- px of upwind progress required to finish the challenge
-Config.SAILING_INSTRUCTIONS_UPWIND_TAUNT_DELAY_SECONDS    = 8 -- seconds of no progress before the first mocking line
-Config.SAILING_INSTRUCTIONS_UPWIND_TAUNT_INTERVAL_SECONDS = 6 -- seconds between subsequent mocking lines
+Config.SAILING_INSTRUCTIONS_UPWIND_DISTANCE_PX      = 200 -- px of upwind progress required to finish the challenge
+Config.SAILING_INSTRUCTIONS_UPWIND_TAUNT_DELAY_SECONDS    = 5 -- seconds of no progress before the first mocking line
+Config.SAILING_INSTRUCTIONS_UPWIND_TAUNT_INTERVAL_SECONDS = 5 -- seconds between subsequent mocking lines
 
 -----------
 -- Menus --
