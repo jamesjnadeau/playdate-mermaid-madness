@@ -105,9 +105,11 @@ SailingInstructions.DIALOGUE = {
 	{ type = "trim", text = "Trim in again. Watch your speed." },
 	{ type = "line", text = "Huh. Even faster. Good job, mortal. Don't let it go to your head." },
 	{ type = "line", text = "Here's a secret: boats can even sail upwind." },
-	{ type = "line", text = "Bet you can't.", sound = "evilLaugh" },
+	{ type = "line", text = "But go too far up wind and you loose all your speed." },
+	{ type = "line", text = "Bet you can't do it for a length as far as your mortal eyes can see.", sound = "evilLaugh" },
 	{ type = "upwindChallenge", text = "Sail upwind. Go on. I'll wait." },
 	{ type = "line", text = "Wow, look at you. You can actually sail now." },
+	{ type = "line", text = "If you want, you can use the menu to change the wind." },
 	{ type = "freeSail", text = "Press \u{24B7} when you are ready." },
 }
 
@@ -115,6 +117,7 @@ SailingInstructions.DIALOGUE = {
 -- always fires first, then the rest rotate 2..N so repeat offenses don't
 -- just loop the same line -- edit freely, order doesn't matter past index 1.
 SailingInstructions.OFF_COURSE_PHRASES = {
+	"Listen and follow my directions exactly:",
 	"That is not what I asked.",
 	"Wrong way. I'm a god, not a GPS.",
 	"That corner. That one. Not that one.",
