@@ -47,7 +47,7 @@ end
 ---@param item MenuCard.Item
 ---@param index integer
 ---@param descWidth number
----@param font any?
+---@param font _Font?
 ---@return _Image
 local function buildEnemyDesc(item, index, descWidth, font)
 	local enemy = getPreviews()[index]

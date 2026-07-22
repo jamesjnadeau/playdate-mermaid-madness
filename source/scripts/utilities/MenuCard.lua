@@ -109,8 +109,8 @@ end
 ---@param footerText string
 ---@param items MenuCard.Item[]
 ---@param selectedIndex integer
----@param font any? font override (see e.g. UpgradeSelectScene's MENU_FONT), or nil for the current global font
----@param opts? { maxVisible?: integer, buildDesc?: fun(item: MenuCard.Item, index: integer, descWidth: number, font: any): _Image } maxVisible windows the display rows (headers + items) to that many at once, recentered on the selection every rebuild -- see the file header comment. Omitted lays out every row. buildDesc, if given, replaces the default plain-text description pane with a custom one (e.g. EnemySelectScene's enemy preview + stats) -- called with the selected item and handed the description pane's width to lay out into.
+---@param font _Font? font override (see e.g. UpgradeSelectScene's MENU_FONT), or nil for the current global font
+---@param opts? { maxVisible?: integer, buildDesc?: fun(item: MenuCard.Item, index: integer, descWidth: number, font: _Font?): _Image } maxVisible windows the display rows (headers + items) to that many at once, recentered on the selection every rebuild -- see the file header comment. Omitted lays out every row. buildDesc, if given, replaces the default plain-text description pane with a custom one (e.g. EnemySelectScene's enemy preview + stats) -- called with the selected item and handed the description pane's width to lay out into.
 ---@return MenuCard.Layout
 function MenuCard.build(titleText, footerText, items, selectedIndex, font, opts)
 	opts = opts or {}
