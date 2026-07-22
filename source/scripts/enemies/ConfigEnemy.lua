@@ -174,8 +174,8 @@ Config.ENEMY_SEA_SERPENT_COLOR = gfx.kColorBlack
 Config.ENEMY_SEA_SERPENT_MIN_LEVEL = 2  -- unlocked starting this level -- see Config.ENEMY_MIN_LEVEL
 -- Head triangle: base (width HEAD_WIDTH * 2) centered on the head position,
 -- tip HEAD_LENGTH ahead of it along the heading.
-Config.ENEMY_SEA_SERPENT_HEAD_LENGTH = 14
-Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 8
+Config.ENEMY_SEA_SERPENT_HEAD_LENGTH = 24
+Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 24
 -- Trailing body: configurable count/size/spacing of the black ellipses that
 -- follow the head along its actual travelled path (see
 -- EnemySeaSerpent:updateTrail) -- not baked into the rotated body image like
