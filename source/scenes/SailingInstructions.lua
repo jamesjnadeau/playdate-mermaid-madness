@@ -418,34 +418,48 @@ end
 -- needed here)
 -- ---------------------------------------------------------------------------
 
--- Whichever line is "live" right now: an off-course scolding takes priority,
--- then an upwind-challenge mock line (once one's fired), otherwise the
--- current beat's own text.
+-- Whichever line is "live" right now: an off-course scolding is shown above
+-- the heading beat's own direction (so the player's reminded which way to
+-- turn, not just that they're wrong), then an upwind-challenge mock line
+-- (once one's fired), otherwise just the current beat's own text.
 ---@return string
 function SailingInstructions:currentText()
 	local beat = SailingInstructions.DIALOGUE[self.beatIndex]
 	if not beat then return "" end
-	if self.offCourseMessage then return self.offCourseMessage end
+	if self.offCourseMessage then return self.offCourseMessage .. "\n" .. beat.text end
 	if beat.type == "upwindChallenge" and self.upwindMockText then return self.upwindMockText end
 	return beat.text
 end
 
 -- Same white rounded-rect card InstructionsScene:drawInstructionText draws
--- (top-right, Config.INSTRUCTIONS_TEXT_BOX_* sizing/wrapping), just showing
--- one line (currentText()) instead of a prompt+subline pair -- there's no
--- step-progress counter here, and no "Ⓑ to exit" hint (Ⓑ only ever does
--- something on the terminal "freeSail" beat, whose own text already says
--- "Press Ⓑ").
+-- (top-right, Config.INSTRUCTIONS_TEXT_BOX_* sizing/wrapping/prompt+subline
+-- layout) -- the main line is currentText(), and the subline is a bare "Ⓐ"
+-- hint shown only while Ⓐ actually does something, i.e. on a "line" beat
+-- (see onAButtonDown -- every other beat type clears itself via its own
+-- gate, not a button press). There's no "Ⓑ to exit" hint here (Ⓑ only ever
+-- does something on the terminal "freeSail" beat, whose own text already
+-- says "Press Ⓑ").
 function SailingInstructions:drawInstructionText()
 	local text = self:currentText()
+	local beat = SailingInstructions.DIALOGUE[self.beatIndex]
+	local subline = (beat and beat.type == "line") and "\u{24B6}" or nil
+
 	local maxWidth = Config.INSTRUCTIONS_TEXT_BOX_MAX_WIDTH
 	local padX = Config.INSTRUCTIONS_TEXT_BOX_PADDING_X
 	local padY = Config.INSTRUCTIONS_TEXT_BOX_PADDING_Y
+	local lineGap = Config.INSTRUCTIONS_TEXT_LINE_GAP
 	local radius = Config.INSTRUCTIONS_TEXT_BOX_RADIUS
 
 	local textW, textH = gfx.getTextSizeForMaxWidth(text, maxWidth)
-	local boxW = textW + padX * 2
-	local boxH = textH + padY * 2
+	local boxW, boxH = textW, textH
+	local sublineW, sublineH = 0, 0
+	if subline then
+		sublineW, sublineH = gfx.getTextSizeForMaxWidth(subline, maxWidth)
+		boxW = math.max(boxW, sublineW)
+		boxH = boxH + lineGap + sublineH
+	end
+	boxW = boxW + padX * 2
+	boxH = boxH + padY * 2
 
 	local boxX = Config.SCREEN_W - Config.INSTRUCTIONS_TEXT_BOX_MARGIN_RIGHT - boxW
 	local boxY = Config.INSTRUCTIONS_TEXT_BOX_TOP
@@ -456,5 +470,10 @@ function SailingInstructions:drawInstructionText()
 	gfx.drawRoundRect(boxX, boxY, boxW, boxH, radius)
 
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
-	gfx.drawTextInRect(text, boxX + padX, boxY + padY, textW, textH, nil, nil, kTextAlignment.center)
+	local textX = boxX + padX
+	local textY = boxY + padY
+	gfx.drawTextInRect(text, textX, textY, textW, textH, nil, nil, kTextAlignment.center)
+	if subline then
+		gfx.drawTextInRect(subline, textX, textY + textH + lineGap, sublineW, sublineH, nil, nil, kTextAlignment.center)
+	end
 end
