@@ -19,9 +19,8 @@
 -- at which point it retargets wherever the player is at that moment and
 -- repeats. All tuning lives in Config.ENEMY_BLUE_WHALE_* (see ConfigEnemy.lua).
 --
--- Drawn as a body ellipse with a tail fluke and a blowhole (see
--- EnemyBlueWhale:drawBodyLocal) rather than a hull polygon, only while
--- "surfaced" -- see EnemyBlueWhale:draw.
+-- Drawn as the whaleImage sprite (see EnemyBlueWhale:drawBodyLocal) rather
+-- than a hull polygon, only while "surfaced" -- see EnemyBlueWhale:draw.
 
 import "scripts/config/Config"
 import "scripts/config/ConfigEnemy"
@@ -29,6 +28,18 @@ import "scripts/utilities/Utils"
 import "scripts/enemies/Enemy"
 
 local gfx <const> = playdate.graphics
+
+-- Sprite for drawBodyLocal -- see tools/render-blue-whale.sh for how this was
+-- derived from art-src/blue_whale.png (background removal, trim, and a 90
+-- rotation so the nose points along local +x, this game's heading-0
+-- convention). Baked at exactly 2x Config.ENEMY_BLUE_WHALE_LENGTH x 2x BEAM's
+-- current defaults (80x36) so the drawScaled call in drawBodyLocal is an
+-- identity scale unless those Config values are actually customized away
+-- from that default -- same reasoning as StormCloud.lua's cloudImage sitting
+-- at exactly Config.STORM_CLOUD_WIDTH x HEIGHT.
+local whaleImage = gfx.image.new("assets/images/blue-whale")
+assert(whaleImage, "missing assets/images/blue-whale")
+local whaleImageWidth, whaleImageHeight = whaleImage:getSize()
 
 ---@class EnemyBlueWhale : Enemy
 ---@field state string "submerged" | "warning" | "breaching" | "surfaced" -- see EnemyBlueWhale:update
@@ -159,44 +170,31 @@ function EnemyBlueWhale:onRamHit(ship)
 	ship:applyKnockback(outward, Config.ENEMY_BLUE_WHALE_KNOCKBACK_DISTANCE)
 end
 
--- Bounding radius of the body ellipse + the tail fluke poking out past its
--- stern -- see Ship:bodyRadius/buildBodyImage. Fixed regardless of state
--- (self.radius toggles for collision, but the baked body image itself is
--- built once from this and only ever drawn while "surfaced" -- see :draw).
+-- Bounding radius of the drawn whaleImage sprite (a LENGTH*2 x BEAM*2 box
+-- centered on the ship) -- see Ship:bodyRadius/buildBodyImage. L*1.3 is a
+-- safe overestimate (sqrt(L^2+B^2) is the box's actual half-diagonal), kept
+-- from the old ellipse+tail-fluke shape this sprite replaced. Fixed
+-- regardless of state (self.radius toggles for collision, but the baked
+-- body image itself is built once from this and only ever drawn while
+-- "surfaced" -- see :draw).
 ---@return number
 function EnemyBlueWhale:bodyRadius()
 	return Config.ENEMY_BLUE_WHALE_LENGTH * 1.3
 end
 
--- Body ellipse (LENGTH along the bow-stern axis, BEAM across) with a
--- triangular tail fluke fanning out past the stern and a small blowhole dot
--- near the bow, drawn in local space (heading 0 = pointing along +x) for
--- Ship:buildBodyImage to bake and rotate per frame. No hull polygon and no
--- bow eye dot (see Enemy:drawBodyLocal) -- a whale doesn't have either.
+-- whaleImage (see the top of this file), scaled to 2x LENGTH by 2x BEAM and
+-- centered at (cx, cy), drawn in local space (heading 0 = pointing along +x)
+-- for Ship:buildBodyImage to bake and rotate per frame. LENGTH/BEAM scale
+-- independently (drawScaled's separate x/y scale factors), same as
+-- StormCloud:draw, so the two Config values don't need to share the source
+-- art's aspect ratio -- this is how the whale's size stays customizable
+-- despite drawing a fixed-aspect sprite instead of a hand-built shape.
 ---@param cx number
 ---@param cy number
 function EnemyBlueWhale:drawBodyLocal(cx, cy)
 	local L, B = Config.ENEMY_BLUE_WHALE_LENGTH, Config.ENEMY_BLUE_WHALE_BEAM
-
-	gfx.setColor(self.color)
-	gfx.fillEllipseInRect(cx - L, cy - B, L * 2, B * 2)
-	if self.outlineColor then
-		gfx.setColor(self.outlineColor)
-		gfx.setLineWidth(2)
-		gfx.drawEllipseInRect(cx - L, cy - B, L * 2, B * 2)
-	end
-
-	gfx.setColor(self.color)
-	local tailTipX = cx - L * 1.3
-	gfx.fillTriangle(cx - L, cy, tailTipX, cy - B * 0.6, tailTipX, cy + B * 0.6)
-	if self.outlineColor then
-		gfx.setColor(self.outlineColor)
-		gfx.setLineWidth(2)
-		gfx.drawTriangle(cx - L, cy, tailTipX, cy - B * 0.6, tailTipX, cy + B * 0.6)
-	end
-
-	gfx.setColor(self.outlineColor or gfx.kColorWhite)
-	gfx.fillCircleAtPoint(cx + L * 0.4, cy - B * 0.5, 2)
+	local sx, sy = (L * 2) / whaleImageWidth, (B * 2) / whaleImageHeight
+	whaleImage:drawScaled(cx - L, cy - B, sx, sy)
 end
 
 -- Grey dithered circle at (targetX, targetY), the spot this whale is about

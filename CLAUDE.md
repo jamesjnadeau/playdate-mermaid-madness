@@ -193,6 +193,36 @@ a new sound bank: drop source files in a new `art-src/sounds/<group>/`
 folder, run `tools/render-sfx.sh art-src/sounds/<group>`, then
 `SoundBank("assets/sounds/<group>")` and call `:playRandom()`.
 
+## Enemy body sprites and cleaning up AI-art source images
+
+An enemy's body doesn't have to be a vector hull drawn in `drawBodyLocal`.
+`EnemyBlueWhale.lua` draws a baked PNG sprite instead
+(`source/assets/images/blue-whale.png`), scaled independently in x/y from
+`Config.ENEMY_BLUE_WHALE_LENGTH`/`BEAM` in `drawBodyLocal` so the body stays
+customizable despite being a fixed image — the same `drawScaled`-with-
+separate-x/y-scale idiom `StormCloud:draw` already uses for
+`storm-cloud.png`. `tools/render-blue-whale.sh` derives the shipped sprite
+from `art-src/blue_whale.png`.
+
+Several `art-src/*.png` sources (as of 2026-07-23: `blue_whale.png`, and
+untracked `rogue_wave.png`/`sea_serpant_sections.png`/`sea_serpent_head.png`/
+`ship.png`) come from an AI art tool that renders a light-gray/white
+checkerboard to represent transparency in its own preview, then
+flattens/exports the PNG fully opaque with that checkerboard baked into the
+RGB pixels — `identify -verbose` on one of these shows alpha=1 (fully
+opaque) across the *whole* canvas, not a real alpha channel. Don't
+chroma-key by color to strip it: the checker cells aren't a clean two-color
+pattern (sampled cells ranged ~180–255), and the art's own white areas are
+indistinguishable by color from background-white cells anyway. Instead
+flood-fill in from all four corners with a wide fuzz tolerance (`convert
+-alpha on -fuzz 30% -fill none -draw "color X,Y floodfill"` from each
+corner) — a connected-region fill can't leak past the art's solid black
+outline into the interior even though interior and background literally
+share colors. See `tools/render-blue-whale.sh` for the full pipeline
+(flood-fill → trim → rotate to this game's heading-0 convention, see
+`Ship:drawBodyLocal`/`Utils.heading` → force-resize to the sprite's default
+on-screen size) to reuse for the other pending `art-src` sources.
+
 ## `tests/`
 
 Plain-`lua5.4` unit tests — no Playdate SDK or Simulator involved. Two tiers:
