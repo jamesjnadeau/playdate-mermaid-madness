@@ -14,6 +14,10 @@ local gfx <const> = playdate.graphics
 ---@field crankAccum number leftover crank degrees not yet converted into a menu move, see the cranked handler
 TitleScene = class("TitleScene").extends(NobleScene) or TitleScene
 
+-- Must match the --fps this table was rendered at, see
+-- tools/render-video-loop.sh.
+local HERO_FPS = 10
+
 local scene = nil
 
 -- Module-scope (not a self.* field): Noble.transition(TitleScene) builds a
@@ -28,10 +32,13 @@ local lightningPlayedThisSession = false
 -- Gap between the menu card and the bottom/left screen edges.
 local TITLE_MENU_MARGIN = 12
 
--- Splash art, full-screen background behind the menu. Pre-dithered at
--- 400x240 (see art-src/title-hero.png for the hi-res original) so pdc's
--- 1-bit conversion happens at the resolution it's actually shown at.
-local heroImage = gfx.image.new("assets/images/title-hero")
+-- Splash art, full-screen looping background video behind the menu. Baked to
+-- a 400x240 imagetable by tools/render-video-loop.sh (see art-src/title-hero.mp4
+-- for the source clip) so pdc's 1-bit conversion happens at the resolution
+-- it's actually shown at.
+local heroImageTable = gfx.imagetable.new("assets/images/title-hero")
+assert(heroImageTable, "missing assets/images/title-hero")
+local heroLoop = gfx.animation.loop.new(1000 / HERO_FPS, heroImageTable, true)
 
 -- Menu labels, in order. Kept as plain display strings -- the scene classes
 -- themselves are only referenced inside confirmSelection() below, which runs
@@ -177,7 +184,7 @@ function TitleScene:update()
 	self.t = self.t + Config.DT
 
 	gfx.setImageDrawMode(gfx.kDrawModeCopy)
-	heroImage:draw(0, 0)
+	heroLoop:draw(0, 0)
 
 	-- Hidden entirely until TITLE_MENU_DELAY elapses (letting the splash art
 	-- sit alone for a beat), then just appears in place -- no rise/slide. A

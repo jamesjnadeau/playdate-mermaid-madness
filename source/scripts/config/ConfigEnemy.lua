@@ -201,8 +201,8 @@ Config.ENEMY_SEA_SERPENT_MIN_LEVEL = 2  -- unlocked starting this level -- see C
 -- triangle, where they matched) to match the sprite's real proportions --
 -- see that script's header for why forcing the old 24x48 (wider-than-long)
 -- box distorted the art.
-Config.ENEMY_SEA_SERPENT_HEAD_LENGTH = 48
-Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 20
+Config.ENEMY_SEA_SERPENT_HEAD_LENGTH = 72
+Config.ENEMY_SEA_SERPENT_HEAD_WIDTH = 30
 -- Trailing body: configurable count/size/spacing of the black ellipses that
 -- follow the head along its actual travelled path (see
 -- EnemySeaSerpent:updateTrail) -- not baked into the rotated body image like

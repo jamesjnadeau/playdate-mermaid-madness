@@ -156,6 +156,22 @@ function gfx.image.new(__pathOrWidth, __height, __bgcolor)
 	return fakeImage
 end
 
+-- gfx.imagetable.new(...) / gfx.animation.loop.new(...) -- TitleScene's
+-- looping background video (see tools/render-video-loop.sh). Same
+-- don't-care-about-real-pixels stand-in as gfx.image.new above: the loop
+-- handle just needs a :draw(x, y) method.
+gfx.imagetable = {}
+function gfx.imagetable.new(__path)
+	return {}
+end
+
+gfx.animation = { loop = {} }
+local fakeAnimationLoop = {}
+function fakeAnimationLoop:draw(__x, __y) end
+function gfx.animation.loop.new(__msPerFrame, __imageTable, __shouldLoop)
+	return fakeAnimationLoop
+end
+
 kTextAlignment = { left = 0, center = 1, right = 2 }
 
 -- playdate.getSystemMenu() ----------------------------------------------------
